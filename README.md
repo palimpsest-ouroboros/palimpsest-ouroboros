@@ -18,6 +18,14 @@
   </picture>
 </div>
 
+<!-- The plate is inert as an <img>: no document, no pointer events, every :hover rule in it
+     dead. Fetched from raw.githubusercontent.com it is served image/svg+xml under
+     default-src 'none'; style-src 'unsafe-inline'; sandbox — scripts refused, inline style
+     allowed — so opened there it is a document, the cursor reaches it, and it answers.
+     The link below is one character and carries no label, which is the whole of the
+     invitation. -->
+<div align="center"><a href="https://raw.githubusercontent.com/palimpsest-ouroboros/palimpsest-ouroboros/main/serpent-dark.svg">·</a></div>
+
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/palimpsest-ouroboros/palimpsest-ouroboros/output/snake-light.svg">
@@ -59,17 +67,23 @@
 
 <div align="center"><em>A text scraped and rewritten, forever eating its own beginning.</em>​‌​‌​​‌‌​‌​​​‌​‌​‌​​‌​‌‌​‌​​‌‌​‌​‌​​​‌​‌​‌​‌​‌​​​​‌​‌‌​‌​‌​​‌​​​​‌​​​‌​‌​‌​‌​​‌​​​‌​‌‌​‌​‌​​​​​‌​‌​​​​‌​​‌​‌​‌​​​​‌​‌‌​‌​‌​‌​‌​‌​‌​​​​​‌​‌​​​​​‌​​‌​‌‌​‌​‌​‌​​‌‌</div>
 
-<!--
-  Hic est liber sancti Albani quem qui ei abstulerit aut titulum deleverit anathema sit. Amen.
+---
 
-  This book belongs to S. Alban. May whosoever steals it from him or destroys its title
-  be anathema. Amen.
+<div align="center">
 
-  Printed by John Willis Clark, THE CARE OF BOOKS (Cambridge, 1901), p. 78; the English in
-  the body, the Latin in footnote 162 at the foot of the same page. Clark gives it as a form
-  occurring frequently in manuscripts belonging to S. Alban's, on the authority of a private
-  communication from M. R. James; no shelfmark is named, so it is safe to quote as printed by
-  Clark and not as coming from any one manuscript. Public domain: published 1901.
+Hic est liber sancti Albani quem qui ei abstulerit aut titulum deleverit anathema sit. Amen.
 
-  Not a term of the licence. The licence is MIT and is in LICENSE, entire and unaltered.
--->
+<em>This book belongs to S. Alban. May whosoever steals it from him or destroys its title be anathema. Amen.</em>
+
+<sub>Printed by John Willis Clark, <em>The Care of Books</em> (Cambridge, 1901), p. 78: the English in the body, the Latin in note 3 at the foot of the same page. <em>Not</em> note 162 — Clark's footnotes restart their numbering on every page, and 162 is Project Gutenberg's continuous renumbering of them. Clark introduces it as "a simpler form of imprecation" that "occurs very frequently in manuscripts belonging to S. Alban's", and his note says only "I owe this quotation to the kindness of my friend Dr James" — he does not call it a private communication, and he names M. R. James, Litt.D., of King's College, at p. 29 n. 5. No shelfmark is given, so it is quoted as Clark prints it and not as coming from any one manuscript. Public domain: published 1901.</sub>
+
+<sub>The curse is a quotation and not a term of the licence. The terms are these. The
+artifact — the drawings, this file, the ledger — is under
+<a href="LICENSE">CC BY-NC-ND 4.0</a>: share it whole, say where it came from, don't sell
+it, don't publish a changed version. The generator under <code>tools/</code> and
+<code>.github/</code> is under <a href="LICENSE-CODE">all rights reserved</a>, and that
+file says why it is not the same licence. <a href="NOTICE">NOTICE</a> holds the rest: that
+none of it is a technical control, that it is not licensed as training data, what the marks
+in these files are and how to read them back, and what was MIT before it and still is.</sub>
+
+</div>

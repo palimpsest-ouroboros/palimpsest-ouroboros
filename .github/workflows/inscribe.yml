@@ -47,6 +47,26 @@ jobs:
         if: steps.dies.outputs.religiosus != 'true'
         run: node --experimental-strip-types tools/palimpsest.ts --readme
 
+      # The ledger has just grown a row, so the digest published in NOTICE is now one
+      # generation stale. Rewrite it before the commit, not after, or the commit it is
+      # published in is not the commit it describes.
+      - name: restate the attestation
+        id: attest
+        if: steps.dies.outputs.religiosus != 'true'
+        run: node --experimental-strip-types tools/attest.ts --notice
+
+      # Cheap and worth having: if a change to the generator ever silently stops the
+      # watermark surviving, or leaves NOTICE disagreeing with the ledger, the run fails
+      # here rather than committing a broken plate and a wrong digest.
+      - name: verify what was drawn
+        if: steps.dies.outputs.religiosus != 'true'
+        run: |
+          node --experimental-strip-types tools/extract.ts --selftest
+          node --experimental-strip-types tools/attest.ts --check
+          node --experimental-strip-types tools/extract.ts \
+            banner-dark.svg banner-light.svg serpent-dark.svg serpent-light.svg \
+            --expect=${{ github.sha }}
+
       - name: commit if the inscription changed
         if: steps.dies.outputs.religiosus != 'true'
         run: |
@@ -58,7 +78,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- LEDGER.md README.md
+          git add -A -- LEDGER.md README.md NOTICE
           if [ "${{ steps.gen.outputs.empty }}" = "true" ]; then
             git commit -m "mortificatio [skip ci]"
           else
@@ -66,15 +86,67 @@ jobs:
           fi
           git push
 
+      # One tag per completed cycle of twelve hours, carrying that cycle's declaration of
+      # innocence as its message.
+      #
+      # It is signed when a key is reachable and unsigned when one is not, and the run is
+      # green either way. The alternative — failing the run on a missing secret — would
+      # stop the surface rewriting itself over a matter of provenance, and the surface
+      # rewriting itself is the work. Set these to turn signing on:
+      #
+      #   secrets.PALIMPSEST_SIGNING_KEY   an ASCII-armoured private key, whole file
+      #   secrets.PALIMPSEST_SIGNING_PASS  its passphrase, if it has one
+      #   vars.PALIMPSEST_SIGNING_KEY_ID   the long key id or fingerprint
+      #   vars.PALIMPSEST_SIGNING_NAME     the name on the key's uid
+      #   vars.PALIMPSEST_SIGNING_EMAIL    the email on the key's uid
+      #
+      # The last two matter: GitHub shows a tag as Verified only when the tagger's email
+      # matches a verified email on the account holding the public key. Tagging as the bot
+      # with somebody else's key gets a signature nobody can attribute.
       - name: mark the cycle
         if: steps.dies.outputs.religiosus != 'true' && steps.gen.outputs.hour == '12'
         continue-on-error: true
+        env:
+          SIGNING_KEY: ${{ secrets.PALIMPSEST_SIGNING_KEY }}
+          SIGNING_PASS: ${{ secrets.PALIMPSEST_SIGNING_PASS }}
+          SIGNING_KEY_ID: ${{ vars.PALIMPSEST_SIGNING_KEY_ID }}
+          SIGNING_NAME: ${{ vars.PALIMPSEST_SIGNING_NAME }}
+          SIGNING_EMAIL: ${{ vars.PALIMPSEST_SIGNING_EMAIL }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          SIGN=""
+          if [ -n "$SIGNING_KEY" ] && [ -n "$SIGNING_KEY_ID" ]; then
+            export GNUPGHOME
+            GNUPGHOME="$(mktemp -d)"
+            chmod 700 "$GNUPGHOME"
+            printf 'allow-loopback-pinentry\n' > "$GNUPGHOME/gpg-agent.conf"
+            printf '%s\n' "$SIGNING_KEY" | gpg --batch --quiet --import
+            gpg-connect-agent reloadagent /bye >/dev/null 2>&1 || true
+            git config gpg.program gpg
+            git config user.signingkey "$SIGNING_KEY_ID"
+            # Written as if-blocks, not `[ -n ... ] && ...`: under `set -e` a trailing
+            # failed test IS the command's status and would end the step.
+            if [ -n "$SIGNING_NAME" ]; then git config user.name "$SIGNING_NAME"; fi
+            if [ -n "$SIGNING_EMAIL" ]; then git config user.email "$SIGNING_EMAIL"; fi
+            if [ -n "$SIGNING_PASS" ]; then
+              printf '#!/bin/sh\nexec gpg --batch --pinentry-mode loopback --passphrase "$SIGNING_PASS" "$@"\n' > "$RUNNER_TEMP/gpgw"
+              chmod +x "$RUNNER_TEMP/gpgw"
+              git config gpg.program "$RUNNER_TEMP/gpgw"
+            fi
+            SIGN="-s"
+            echo "signing with $SIGNING_KEY_ID"
+          else
+            echo "no signing key configured; the tag will be annotated and unsigned"
+          fi
+
           C=$(( ${{ steps.gen.outputs.generation }} / 12 ))
           M=$(node --experimental-strip-types -e "const m=await import('./tools/confession.ts');process.stdout.write(m.declarationFor($C))")
-          git tag -a "cycle-$C" -m "$M"
+          # -s implies annotated, so -a is passed only when there is no key.
+          git tag ${SIGN:--a} "cycle-$C" -m "$M"
+          git tag -v "cycle-$C" || echo "unsigned"
           git push origin "cycle-$C"
 
       - name: the description

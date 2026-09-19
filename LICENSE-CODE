@@ -1,0 +1,68 @@
+The generator
+=============
+
+This file covers the programs that make the artifact: everything under `tools/`
+and `.github/`. The artifact itself — the SVGs, the README, the ledger, the prose —
+is covered by LICENSE, which is CC BY-NC-ND 4.0.
+
+Copyright (c) 2026 Ganesh Sharma. All rights reserved.
+
+No permission is granted to copy, modify, merge, publish, distribute, sublicense
+or sell these programs or any part of them.
+
+You may read them. The repository is public and has to stay public, because the
+banner it produces is rendered from these files by a browser that has to be able
+to fetch them. Reading, quoting in discussion, and citing are not what this
+withholds; redistribution and reuse are.
+
+
+Why this is not the same licence as the artifact
+------------------------------------------------
+
+Because Creative Commons says not to use theirs on software, and they are right.
+
+From the Creative Commons FAQ, at creativecommons.org/faq/, under "Can I apply a
+Creative Commons license to software?":
+
+    We recommend against using Creative Commons licenses for software.
+
+and, earlier on the same page:
+
+    The only categories of works for which CC does not recommend its licenses
+    are computer software and hardware.
+
+Their reasons are the ones that matter here. A CC licence has no notion of source
+code as distinct from the thing built from it, says nothing about patents, and
+says nothing about linking — three questions that do not arise for a drawing and
+do arise for a program. Applying CC BY-NC-ND to `tools/` would be putting an
+instrument to a use its own author warns against, and getting a document whose
+terms do not address the situation it is in.
+
+All rights reserved is not a stricter version of the same idea dressed up. It is a
+different and simpler statement: nothing is granted, so nothing has to be
+construed. For code that exists to produce one specific artifact for one specific
+profile, that is the accurate description of the position, and it does not pretend
+to be a licence when it is the absence of one.
+
+The practical difference between the two files: the artifact may be shared
+verbatim, for non-commercial purposes, with attribution. The generator may not be
+shared at all. That asymmetry is deliberate. The banner is meant to be seen and
+pointed at. The machine that writes it is not meant to be run by anyone else,
+because run by anyone else it writes a different banner from a different history,
+which is the whole of what `tools/attest.ts` exists to say.
+
+
+What this is not
+----------------
+
+It is not a technical control, and it does not become one by being written down.
+Everything here is readable, and made to be read. See NOTICE.
+
+
+Before this commit
+------------------
+
+These programs were published under the MIT Licence from the repository's first
+commit until the commit that added this file. That grant was real and is not
+withdrawn: see NOTICE for what it covers and for how to find out whether a
+particular copy falls under it.

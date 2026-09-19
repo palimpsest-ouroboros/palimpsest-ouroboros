@@ -14,6 +14,7 @@
 // 252-second clock. None of these is labelled anywhere on the plate.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { embed } from "./canary.ts";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,20 +48,44 @@ interface KnotP {
 
 /* SOURCED. The four sons of Horus, one at each corner of the plate.
 
-   E. A. Wallis Budge, THE GODS OF THE EGYPTIANS (London, 1904) and THE MUMMY:
-   Chapters on Egyptian Funereal Archaeology (Cambridge, 1893), for the names, the
-   organ each jar received, the cardinal direction each was assigned, and the head
-   each jar was given. Budge's spellings are kept as he prints them. Public domain:
-   Budge died 1934 and both works appeared before 1929.
+   Directions and organs: E. A. Wallis Budge, THE GODS OF THE EGYPTIANS (London:
+   Methuen, 1904), Vol. I, p. 492, which gives Hapi the north and the small viscerae,
+   Tuamutef the east and the heart and lungs, the southern god the stomach and large
+   intestines, and Qebhsennuf the west and the liver and the gall bladder. Budge's own
+   spellings, including "viscerae" and "the gall bladder", are kept as he prints them.
+
+   Two things that page does NOT give, and which come from elsewhere. It names the
+   southern god Amset, not Mestha; Mestha in the southern position is THE MUMMY:
+   Chapters on Egyptian Funereal Archaeology (Cambridge: University Press, 1893),
+   p. 195. And it gives no heads at all; the heads are The Mummy p. 161. Budge spells
+   the eastern god Tuamutef in 1904 and Tuamautef in 1893; the 1904 form is used here
+   because the directions and organs are the 1904 page.
+
+   Budge contradicts himself twice and neither contradiction is resolved here, because
+   resolving it would mean choosing, and there is no ground to choose on. Hapi's jar is
+   "the head of an ape" at The Mummy p. 161 and dog-headed at p. 195; the ape is taken,
+   the disagreement is recorded. The heart is in Tuamutef's jar with the lungs at p. 161,
+   at p. 195 and at Gods I p. 492, but at p. 262 it "was embalmed and put in a jar by
+   itself."
+
+   What Budge IS consistent about is that the heart came out. "The chief intestines and
+   the heart and lungs were then carefully taken out" (The Mummy, p. 160), and it could
+   not be put back until it had been judged (p. 262). The familiar claim that the heart
+   alone was left in the body for the weighing is not what this source says and is not
+   asserted here.
+
+   Budge does not say a scarab was set in the heart's place, and this file does not say
+   it either. The heart scarab is "laid upon Ani's breast" at the neck (p. 162); a
+   footnote there records only that some rubrics of chapter 30 direct it be placed
+   "within the heart" — inside it, not instead of it. The tidier version, in which the
+   organ is removed and a stone one substituted, is not in Budge and was checked for
+   before it was left out.
+
+   Public domain: Budge died 1934; these works appeared 1893 and 1904.
 
    The corner and direction pairing is fixed and decides where each entry lands. The
    marks' shapes are chosen by corner, not by name, so the names change nothing that
    is drawn. Nothing on the plate says any of this.
-
-   Budge is not consistent about the heart. He gives "the heart and lungs" to
-   Tuamutef's jar here, and elsewhere says the heart was taken out, mummified, jarred,
-   and a scarab set in its place. The familiar claim that the heart alone was left in
-   the body for the weighing is not what this source says, and is not asserted here.
 */
 
 interface Canopic { corner: string; direction: string; name: string; organ: string; head: string }
@@ -1567,8 +1592,12 @@ const render = (ground: string, line: string): string => {
   return o.join("\n");
 };
 
-const darkSvg = render("#0b0a09", "#d6cfc0");
-const lightSvg = render("#d6cfc0", "#0b0a09");
+// The coordinate watermark goes on last, over the finished plate. See tools/canary.ts:
+// every path and polyline coordinate is moved to a whole thousandth of a user unit and
+// the last bit of that thousandth carries one bit of a signature keyed to the sha the
+// plate was cut at. Deterministic, idempotent, and described in full where it lives.
+const darkSvg = embed(render("#0b0a09", "#d6cfc0"), SHA);
+const lightSvg = embed(render("#d6cfc0", "#0b0a09"), SHA);
 
 /* ------------------------------------------------------------- report */
 

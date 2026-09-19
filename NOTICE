@@ -1,0 +1,162 @@
+NOTICE
+======
+
+What this is
+------------
+
+`palimpsest-ouroboros` is a single artifact that rewrites itself twice a day. A
+program reads the banner it wrote last time, fades every line already on it, drops
+what has faded past reading, and writes one new line on top. Nothing is ever
+erased; the old lines are still in the file, going quiet. A second program cuts an
+engraved ouroboros from the same state. Both are drawn entirely from the
+repository's own commit history, and from nothing else — no clock, no randomness,
+no input from outside.
+
+The work is the whole of it: the drawings, the programs that make them, the ledger
+that records each generation, and the writing around them.
+
+Copyright (c) 2026 Ganesh Sharma.
+
+
+The terms
+---------
+
+  LICENSE        the artifact — the SVGs, the README, the ledger, the prose.
+                 Creative Commons Attribution-NonCommercial-NoDerivatives 4.0
+                 International. Share it verbatim, say where it came from, don't
+                 sell it, don't publish a changed version.
+
+  LICENSE-CODE   the generator — everything under tools/ and .github/.
+                 All rights reserved. That file says why it is not the same
+                 licence as the artifact.
+
+The repository is public and will stay public. It has to be: the banner is fetched
+from it by whatever browser is looking at the profile. Nothing here tries to stop
+anyone reading, and nothing here is obfuscated, minified, or served differently to
+a machine than to a person.
+
+
+Training and automated generation
+---------------------------------
+
+This work is not licensed for use as training data for machine learning systems,
+and not licensed for derivative generation by automated systems.
+
+That is a withholding of permission, not a request. It applies to the drawings, to
+the programs, and to the writing, together and separately. If you want to use any
+of it that way, ask. See "Contact" below.
+
+
+What this is not
+----------------
+
+It is not a technical control, and nobody here is pretending otherwise.
+
+There is no obfuscation in this repository, no minification, no cloaking, nothing
+that behaves one way for an automated reader and another way for a person, and no
+attempt to detect or block crawlers. There is a `robots.txt`, which is advisory in
+the way every robots.txt is — RFC 9309 says outright that its rules "are not a form
+of access authorization" — and which, on a GitHub Pages project site, would not
+even sit at a path a crawler looks in. It says so itself, in its own first lines,
+and carries the `noai` and `noimageai` meta tags as a comment for whoever builds
+that site. None of it stops anything and none of it is meant to look as though it
+does.
+
+So this file is a statement of terms and it is not self-enforcing. Anybody who
+means to ignore it can ignore it, and will find nothing in the way. What the rest
+of the repository does is different and narrower: it makes a copy *provable*. The
+artifact is deterministic from the commit chain, the chain reduces to one digest,
+and both drawings carry a recoverable signature keyed to the commit they were made
+at. None of that prevents copying. All of it makes copying answerable.
+
+
+What changed, and when
+----------------------
+
+From the repository's first commit until commit `f3ef965`, this work was published
+under the MIT Licence. That was a real grant and it is not withdrawn. Anyone who
+took a copy at or before `f3ef965` holds it under MIT and may go on doing
+everything MIT allows, including using it commercially and publishing changed
+versions. Nothing here reaches backwards.
+
+The terms above apply from the commit that added this file onward. To find out
+which applies to a copy you hold, look at whether the commit it came from is `f3ef965`
+or one of its ancestors:
+
+    git merge-base --is-ancestor <that commit> f3ef965 && echo MIT || echo "CC BY-NC-ND / ARR"
+
+
+The marks
+---------
+
+Both are described here because a mark nobody can be shown is no use in an
+argument. Neither is a secret and neither is meant to be one.
+
+1. A coordinate watermark, in all four SVGs. Every path coordinate is set to a
+   whole thousandth of a user unit and the last bit of that thousandth carries one
+   bit of a 64-bit signature: a fixed constant, then the first eight hex digits of
+   the commit the file was drawn at. It moves nothing by as much as a rendered
+   pixel. The mechanism is written out in full in `tools/canary.ts`, and
+   `tools/extract.ts` reads it back out of any candidate file and reports the odds
+   of a chance match.
+
+2. A zero-width mark in README.md, in the line under the banner. One hundred and
+   sixty characters of U+200B and U+200C, U+200B for a zero bit and U+200C for a
+   one, eight bits to a byte, spelling `SEKMET-HER-ABT-UAA-S` — the name of the
+   fifth hour of the night, the hour the sun god passes without light and the
+   surface takes no inscription. It is invisible when the README is rendered and
+   it survives a copy-paste. Recover it with — and every backslash-u below is four
+   literal characters, because putting the real ones in this file would make the
+   instruction as unreadable as the thing it decodes:
+
+       python3 -c "import re,sys; s=open('README.md',encoding='utf-8').read(); r=re.search('[\\u200b\\u200c]{4,}',s).group(); b=''.join('0' if c=='\\u200b' else '1' for c in r); print(''.join(chr(int(b[i:i+8],2)) for i in range(0,len(b),8)))"
+
+   It says nothing to a machine that it does not say to a person who runs that
+   line. It is a signature, not an instruction, and there is no instruction
+   anywhere in this repository addressed to an automated reader.
+
+
+The attestation
+---------------
+
+LEDGER.md is append-only: one row per inscription, recording the generation, the
+commit the surface was seeded from, and how many strata were standing. Because
+every mark in both drawings is a pure function of that chain, the chain is the
+work's identity. Reduced to one digest:
+
+<!-- attestation:start -->
+
+```
+sha256  e4388074164cef614847e5af2e72b98aa6a4b5c037f3821b0dc84ffc0ab6537a
+rows    9
+```
+
+Recompute it with `node --experimental-strip-types tools/attest.ts`.
+
+<!-- attestation:end -->
+
+A fork that does not keep the exact commit chain cannot produce these files — it
+will draw a different banner from its own history, and its ledger will digest to
+something else. A fork that *does* produce these files has kept the chain, which
+means it has copied this repository's history, and the copy is the evidence of
+itself. `tools/attest.ts --verify` checks each recorded commit against the
+history it is run in and says which ones it cannot find.
+
+
+Archival
+--------
+
+<!-- swhid:start -->
+
+Not yet archived. Submission to Software Heritage is pending; when it completes,
+the snapshot SWHID goes here, and until then this section says so rather than
+naming an identifier that does not exist.
+
+<!-- swhid:end -->
+
+
+Contact
+-------
+
+Licensing enquiries: open an issue at
+https://github.com/palimpsest-ouroboros/palimpsest-ouroboros/issues

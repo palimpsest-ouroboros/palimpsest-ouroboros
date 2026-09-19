@@ -1,0 +1,105 @@
+# robots.txt — a preference, stated plainly.
+#
+# Two things about this file are worth knowing before anything in it is read as a
+# control, and both are checkable.
+#
+# FIRST: it is advisory. RFC 9309, the standard that describes this format, says of
+# the rules it defines:
+#
+#     These rules are not a form of access authorization.
+#                                              — RFC 9309 §1, line 100
+#
+# Nothing here blocks anything. Whoever honours it is choosing to.
+#
+# SECOND, and more particular: as things stand this file is not even read. RFC 9309
+# §2.3 requires the rules to be "in a file named /robots.txt (all lowercase) in the
+# top-level path of the service". A GitHub Pages PROJECT site lives at
+# <owner>.github.io/<repo>/, so a crawler looks for <owner>.github.io/robots.txt —
+# a path this repository does not control. Checked on the day this was written:
+# https://palimpsest-ouroboros.github.io/robots.txt returns 404, and so does
+# https://palimpsest-ouroboros.github.io/ , because no Pages site is published yet.
+#
+# So this file becomes effective only if the site moves to a user/organisation site
+# (a repository named palimpsest-ouroboros.github.io) or onto a custom domain. It is
+# here now so that it is already right when one of those happens, and because saying
+# the thing is worth doing even where saying it is all that is possible.
+#
+# The terms themselves are in NOTICE, which is the document that means something.
+# This file restates one corner of them in a format crawlers parse.
+#
+# Every token below is taken from the operator's own published documentation.
+# Deliberately absent, because no primary source could be found for them:
+# anthropic-ai, Claude-Web, Bytespider, cohere-ai. An unverified token in a file
+# like this is worse than an empty line — it reads as coverage that is not there.
+
+
+User-agent: *
+Allow: /
+
+
+# ── crawlers whose operators document them as gathering training data ──────────
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+
+# ── fetchers a person triggers by asking a question ────────────────────────────
+#
+# Listed for the record. Their operators document that a user-initiated fetch may
+# proceed regardless of this file, so these lines are close to decorative, and are
+# kept because the record of what was asked for is the point.
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: Claude-User
+Disallow: /
+
+User-agent: Perplexity-User
+Disallow: /
+
+User-agent: meta-externalfetcher
+Disallow: /
+
+
+# ── search and answer indexes: not restricted ──────────────────────────────────
+#
+# OAI-SearchBot, Claude-SearchBot and PerplexityBot are covered by the
+# "User-agent: *" group above and are left allowed on purpose. The work is meant to
+# be found. What is withheld is training and automated derivation, not being read.
+
+
+# ── for whoever builds the Pages site ──────────────────────────────────────────
+#
+# These belong in the <head> of every HTML page. They are advisory in exactly the
+# way this file is, and in one respect weaker: no major operator documents honouring
+# noai or noimageai, and Meta's crawler documentation names NoAI tags among the
+# "non-standard formats" it does not use. They are cheap and honest to ship. They
+# are not protection and are not offered as any.
+#
+#     <!-- DeviantArt introduced these in November 2022. The syntax is attested;
+#          the observance is not. -->
+#     <meta name="robots" content="noai, noimageai">
+#
+#     <!-- TDM Reservation Protocol. A W3C Community Group Final Report of
+#          2024-02-02, which states of itself that it is not a W3C Standard. -->
+#     <meta name="tdm-reservation" content="1">
+#
+# The header form, X-Robots-Tag: noimageai, is how DeviantArt applies it to images
+# themselves. GitHub Pages serves no custom response headers, so on Pages that form
+# is unavailable and the meta tags are the whole of what can be said.

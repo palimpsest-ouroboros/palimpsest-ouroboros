@@ -30,6 +30,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { embed } from "./canary.ts";
 import {
   FONT_STACK,
   LETTER_SPACING,
@@ -502,6 +503,38 @@ const render = (layers: Layer[], v: Variant, generation: number, sha: string): s
     guardian: guardianFor(generation),
     nomen: "",
     "\u1e25\ua723ty": 1,
+    /*
+     * SOURCED. Saturday, 4 November 1922: the day the first step was found.
+     *
+     * Transcribed by the Griffith Institute, Oxford, at griffith.ox.ac.uk/gri/4sea1not.html
+     * (Part 1: October 28 to December 31, 1922). That page carries three separate
+     * documents and it matters which is which:
+     *
+     *   the pocket appointment book (Lett's No. 46, TAA Archive i.2.21) —
+     *     "Saturday, November 4. First steps of tomb found."
+     *   the ring-binder NOTES, DIARY, AND ARTICLES (TAA Archive i.2.1) —
+     *     "At about 10am I discovered beneath almost the first hut attacked the first
+     *     traces of the entrance of the tomb"
+     *   the excavation journal, register of finds, entry 433 —
+     *     "L.16 Entrance of tomb of   In bed rock floor of water-course (below entrance
+     *     of Ramses VI). Discovered 4th Nov. 1922."
+     *
+     * The YEAR is the third of those and only the third. The diary headings carry
+     * "1922" on October 27 and 28 and then drop it for the rest of the season, so
+     * November 4 is dateless in the diary itself; the register entry is where Carter
+     * writes the full date out. The Institute notes that it standardised the dates in
+     * the transcript, which is a normalisation of form and not of the day.
+     *
+     * The year is cited to the diary and not to the book on purpose. Carter & Mace, THE
+     * TOMB OF TUT.ANKH.AMEN (1923), narrates the day and gives the date, but the year
+     * 1922 is not printed anywhere in the volume; the diary is where it is attested.
+     *
+     * It is in the metadata and not in a commit date because a commit date cannot go
+     * back to 1922, and a date forced into a field that will not hold it is a lie about
+     * the field rather than a fact about the day. Here it is only a number, correctly
+     * labelled, that nobody asked for.
+     */
+    anno: "1922-11-04",
     layers: n,
     cap: MAX_LAYERS,
     variant: v.name,
@@ -550,7 +583,14 @@ const render = (layers: Layer[], v: Variant, generation: number, sha: string): s
   out.push(textEl(top, v.line, top.opacity, "    ", top.opacity));
   out.push(`  </g>`);
   out.push(`</svg>`);
-  return out.join("\n") + "\n";
+  /*
+   * The coordinate watermark, applied last so it sees the finished document. It rewrites
+   * every path coordinate to a whole thousandth of a user unit and puts one bit of a
+   * 64-bit signature in the last bit of each. It is a pure function of the bytes and the
+   * sha, so the output stays byte-reproducible; tools/canary.ts describes the whole
+   * mechanism, which is not a secret and is no use as one.
+   */
+  return embed(out.join("\n") + "\n", sha);
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
