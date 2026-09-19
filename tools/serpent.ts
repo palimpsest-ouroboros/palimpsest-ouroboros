@@ -1421,6 +1421,27 @@ const strikeTrack = (period: number, open: number, peak: number, px: number, py:
     { t: period, head: 1, sx: 1, sy: 1, ease: "" },
   ];
   const kt = beats.map((b) => f6(b.t / period));
+  /*
+   * The beats above are written in SECONDS, and only divided by the period here. That is
+   * what keeps the lunge 0.4s long whatever the period is -- it is an absolute duration
+   * that becomes a smaller fraction of a shorter cycle, not a fraction that stretches.
+   *
+   * What it does NOT survive is a period too short to hold the envelope. The beats run to
+   * open + 39.0 (8.4s of gathering, 0.4s of lunge, 30.2s of letting go), so a period below
+   * that produces keyTimes past 1 and out of order, which is not a stretched animation but
+   * an invalid one: SMIL requires keyTimes non-decreasing within [0,1]. It fails silently
+   * in some renderers and loudly in others, which is the worst combination, so it is
+   * checked here instead.
+   */
+  for (let i = 0; i < kt.length; i++) {
+    const v = Number(kt[i]);
+    if (!Number.isFinite(v) || v < 0 || v > 1 || (i > 0 && v < Number(kt[i - 1]))) {
+      throw new Error(
+        `strikeTrack: keyTimes must be non-decreasing within [0,1]; got ${kt.join(";")} ` +
+        `for period=${period}s open=${open}s. The envelope needs open + 39.0 <= period.`,
+      );
+    }
+  }
   return {
     kt: kt.join(";"),
     ks: beats.slice(0, -1).map((b) => b.ease).join(";"),
@@ -1432,7 +1453,23 @@ const strikeTrack = (period: number, open: number, peak: number, px: number, py:
   };
 };
 
-const STRIKE_PERIOD = 252, STRIKE_OPEN = 178, BREATH = 46;
+/*
+ * The strike clock. STRIKE_OPEN is how long the plate is still before the gathering
+ * starts; the 39 seconds after it are spoken for by the envelope, and the remainder is
+ * the pause between the creature finishing its return and beginning again.
+ *
+ *   quiet 30.0   gather 8.4   lunge 0.4   letting go 30.2   quiet 5.9   = 75.0
+ *
+ * The two quiets stand in the same ratio to each other as they did at 252/178 -- 5.0:1
+ * against 5.09:1 -- so the shape of the rhythm is the one it was; there is simply less
+ * of it between one strike and the next. At 252 the creature was in motion for 15.5% of
+ * its cycle and at 75 it is in motion for 52%, which is the real change and is not a
+ * side effect of anything.
+ *
+ * open + 39.0 <= period, or strikeTrack throws. A period of 30 cannot be had at all
+ * without shortening the letting-go, which is 30.2s by itself.
+ */
+const STRIKE_PERIOD = 75, STRIKE_OPEN = 30, BREATH = 46;
 const GHOST_PERIOD = 227, GHOST_OPEN = 121, GHOST_BREATH = 53, GHOST_DASH = 181;
 const mainTrack = strikeTrack(STRIKE_PERIOD, STRIKE_OPEN, 1.50, 0.895, 0.775);
 const ghostTrack = strikeTrack(GHOST_PERIOD, GHOST_OPEN, 1.22, 0.944, 0.884);
