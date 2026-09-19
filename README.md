@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="the beginning eats" width="100%">
+    <img src="banner-dark.svg" alt="palimpsest-ouroboros" width="100%">
   </picture>
 </div>
 
@@ -30,13 +30,14 @@
 
 <!-- strata:start -->
 
-| generation | sha | layers |
-| ---: | --- | ---: |
+| generation | sha | layers |  |
+| ---: | --- | ---: | ---: |
 | 0 | 2967804 | 1 |
 | 1 | 3a0b0cf | 2 |
 | 2 | 27e1db0 | 3 |
 | 3 | 7c50a4d | 4 |
 | 4 | 95e8910 | 5 |
+| 5 | 34cba82 | 6 | 8 |
 
 <!-- strata:end -->
 

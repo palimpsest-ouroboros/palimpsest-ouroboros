@@ -4,6 +4,14 @@
 // at the mouth. Everything is stroked linework; tone is line density alone.
 //
 //   node --experimental-strip-types serpent.ts --banner=<path> --out-dir=<dir> [--dry-run]
+//
+// What the banner's state changes, besides the coil itself:
+//   at the seventh hour  a gouge is taken out of the engraved tone, and the two
+//                          generations after it burnish the gouge away again
+//   layers >= 10           a second body, at 3% and out of phase, behind the first
+//   layers >= 12           one patch of plate where the tone is stopped out solid
+// and, at every generation, four corner marks and one 0.4-second event on a
+// 252-second clock. None of these is labelled anywhere on the plate.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -28,6 +36,43 @@ interface Occ {
 }
 
 interface Anchor { l: number; v: number }
+
+// every parameter the closed knot needs, so a second body can be built from the
+// same machinery with the numbers moved a little
+interface KnotP {
+  rotBase: number; phK: number; R0: number; R1: number; K: number; eps: number;
+  wob1: number; wob2: number; ph1: number; ph2: number;
+  aw1: number; aw2: number; ph3: number; ph4: number;
+}
+
+/* SOURCED. The four sons of Horus, one at each corner of the plate.
+
+   E. A. Wallis Budge, THE GODS OF THE EGYPTIANS (London, 1904) and THE MUMMY:
+   Chapters on Egyptian Funereal Archaeology (Cambridge, 1893), for the names, the
+   organ each jar received, the cardinal direction each was assigned, and the head
+   each jar was given. Budge's spellings are kept as he prints them. Public domain:
+   Budge died 1934 and both works appeared before 1929.
+
+   The corner and direction pairing is fixed and decides where each entry lands. The
+   marks' shapes are chosen by corner, not by name, so the names change nothing that
+   is drawn. Nothing on the plate says any of this.
+
+   Budge is not consistent about the heart. He gives "the heart and lungs" to
+   Tuamutef's jar here, and elsewhere says the heart was taken out, mummified, jarred,
+   and a scarab set in its place. The familiar claim that the heart alone was left in
+   the body for the weighing is not what this source says, and is not asserted here.
+*/
+
+interface Canopic { corner: string; direction: string; name: string; organ: string; head: string }
+
+const CANOPIC: Canopic[] = [
+  { corner: "NW", direction: "north", name: "Hapi",        organ: "the small viscerae",               head: "the head of an ape" },
+  { corner: "NE", direction: "east",  name: "Tuamutef",    organ: "the heart and lungs",              head: "the head of a jackal" },
+  { corner: "SE", direction: "south", name: "Mestha",      organ: "the stomach and large intestines", head: "the head of a man" },
+  { corner: "SW", direction: "west",  name: "Qebhsennuf",  organ: "the liver and the gall bladder",   head: "the head of a hawk" },
+];
+
+/* ============================== end of the substitutable block ================ */
 
 /* ------------------------------------------------------------- tiny math */
 
@@ -144,6 +189,48 @@ const meta = readMeta(resolve(bannerFile));
 const SHA = meta.sha;
 const LAYERS = clamp(meta.layers, 1, meta.cap || 14);
 const CAP = meta.cap || 14;
+const GEN = typeof meta.generation === "number" ? meta.generation : 0;
+
+/* ------------------------------------------------------ where in the cycle */
+// Twelve generations to the turn. At the seventh the plate is wounded; the two
+// generations after that burnish it back; the rest of the turn remembers
+// nothing. Seeded per turn, so no two cycles are cut in the same place.
+const CYC = 12;
+const PHASE = ((GEN % CYC) + CYC) % CYC;
+const TURN = Math.floor(GEN / CYC);
+/**
+ * The gouge keeps its place while it heals.
+ *
+ * Seeding it from the banner's own sha would move it, because that sha changes every
+ * generation and the wound has to last three of them. The ledger records the sha of the
+ * generation at which the cut opened -- the seventh hour of this cycle -- and that one value
+ * is the same throughout the heal, so the position still comes from the repository's own
+ * history rather than from the cycle number alone. With no ledger to read, the cycle number
+ * is used and the wound is deterministic all the same.
+ */
+const cutSeed = (): string => {
+  const opened = TURN * CYC + 6;
+  try {
+    const led = readFileSync(resolve(REPO, "LEDGER.md"), "utf8");
+    for (const line of led.split("\n")) {
+      const m = /^\|\s*(\d+)\s*\|\s*([0-9a-f]+)\s*\|/.exec(line.trim());
+      if (m !== null && Number.parseInt(m[1]!, 10) === opened) return m[2]!;
+    }
+  } catch {
+    /* nothing to read */
+  }
+  return `turn:${TURN}`;
+};
+
+const cutDepth = PHASE === 6 ? 1 : PHASE === 7 ? 0.54 : PHASE === 8 ? 0.21 : 0;
+const cutPhase = PHASE === 6 ? "open" : PHASE === 7 ? "healing" : PHASE === 8 ? "closing" : "absent";
+const CUT_ON = cutDepth > 0;
+
+// two thresholds nobody is told about
+const GHOST_AT = 10;
+const CORVI_AT = 12;
+const hasGhost = LAYERS >= GHOST_AT;
+const hasCorvi = LAYERS >= CORVI_AT;
 
 /* ====================================================== form from state */
 
@@ -225,16 +312,23 @@ const ph3 = pick(SHA, "aph", 1, 0, TAU);
 const ph4 = pick(SHA, "aph", 2, 0, TAU);
 
 // base closed knot. Only EVEN harmonics wobble it, so the two windings stay
-// congruent and the K crossings survive intact.
-const knot = (u: number): V => {
-  const ang = TAU * 2 * u + rotBase + aw1 * Math.sin(TAU * 2 * u + ph3) + aw2 * Math.sin(TAU * 4 * u + ph4);
-  const ph = TAU * K * u + phK;
+// congruent and the K crossings survive intact. Parameterised, because the
+// thing behind it is built from exactly this and nothing else.
+const mkKnot = (p: KnotP): ((u: number) => V) => (u: number): V => {
+  const ang = TAU * 2 * u + p.rotBase + p.aw1 * Math.sin(TAU * 2 * u + p.ph3) + p.aw2 * Math.sin(TAU * 4 * u + p.ph4);
+  const ph = TAU * p.K * u + p.phK;
   const r =
-    R0 + R1 * (Math.cos(ph) + EPS * Math.cos(2 * ph)) +
-    wob1 * Math.cos(TAU * 2 * u + ph1) +
-    wob2 * Math.cos(TAU * 4 * u + ph2);
+    p.R0 + p.R1 * (Math.cos(ph) + p.eps * Math.cos(2 * ph)) +
+    p.wob1 * Math.cos(TAU * 2 * u + p.ph1) +
+    p.wob2 * Math.cos(TAU * 4 * u + p.ph2);
   return { x: CX + SX * r * Math.cos(ang), y: CY + SY * r * Math.sin(ang) };
 };
+
+const BASEK: KnotP = {
+  rotBase, phK, R0, R1, K, eps: EPS,
+  wob1, wob2, ph1, ph2, aw1, aw2, ph3, ph4,
+};
+const knot = mkKnot(BASEK);
 
 /* ------------------------------------------ raw sampling + head/tail warp */
 
@@ -298,36 +392,49 @@ const tipDir = rot(headFwd, biteAng);                  // tail enters the jaws c
 
 /* --------------------------------------------- resample by arc length */
 
-const cumRaw: number[] = new Array(RAW + 1);
-cumRaw[0] = 0;
-for (let k = 1; k <= RAW; k++) cumRaw[k] = cumRaw[k - 1]! + len(sub(rawPts[k]!, rawPts[k - 1]!));
-const S = cumRaw[RAW]!;
-
-const N = 1500;
-const P: V[] = new Array(N);
-{
+const resampleArc = (raw: V[], n: number): { P: V[]; S: number } => {
+  const m = raw.length - 1;
+  const cum: number[] = new Array(m + 1);
+  cum[0] = 0;
+  for (let k = 1; k <= m; k++) cum[k] = cum[k - 1]! + len(sub(raw[k]!, raw[k - 1]!));
+  const total = cum[m]!;
+  const out: V[] = new Array(n);
   let k = 0;
-  for (let i = 0; i < N; i++) {
-    const target = (i / (N - 1)) * S;
-    while (k < RAW - 1 && cumRaw[k + 1]! < target) k++;
-    const a = cumRaw[k]!, b = cumRaw[k + 1]!;
+  for (let i = 0; i < n; i++) {
+    const target = (i / (n - 1)) * total;
+    while (k < m - 1 && cum[k + 1]! < target) k++;
+    const a = cum[k]!, b = cum[k + 1]!;
     const t = b > a ? (target - a) / (b - a) : 0;
-    P[i] = {
-      x: rawPts[k]!.x + (rawPts[k + 1]!.x - rawPts[k]!.x) * t,
-      y: rawPts[k]!.y + (rawPts[k + 1]!.y - rawPts[k]!.y) * t,
+    out[i] = {
+      x: raw[k]!.x + (raw[k + 1]!.x - raw[k]!.x) * t,
+      y: raw[k]!.y + (raw[k + 1]!.y - raw[k]!.y) * t,
     };
   }
-}
-const ds = S / (N - 1);
+  return { P: out, S: total };
+};
 
 // tangents + normals (n is the left normal; s = -1 is the SPINE side)
-const T: V[] = new Array(N);
-const Nr: V[] = new Array(N);
-for (let i = 0; i < N; i++) {
-  const a = P[Math.max(0, i - 1)]!, b = P[Math.min(N - 1, i + 1)]!;
-  T[i] = norm(sub(b, a));
-  Nr[i] = { x: -T[i]!.y, y: T[i]!.x };
-}
+const framesOf = (Q: V[]): { T: V[]; Nr: V[] } => {
+  const n = Q.length;
+  const t: V[] = new Array(n);
+  const nr: V[] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = Q[Math.max(0, i - 1)]!, b = Q[Math.min(n - 1, i + 1)]!;
+    t[i] = norm(sub(b, a));
+    nr[i] = { x: -t[i]!.y, y: t[i]!.x };
+  }
+  return { T: t, Nr: nr };
+};
+
+const N = 1500;
+const arc = resampleArc(rawPts, N);
+const P = arc.P;
+const S = arc.S;
+const ds = S / (N - 1);
+
+const fr0 = framesOf(P);
+const T = fr0.T;
+const Nr = fr0.Nr;
 
 /* ----------------------------------------------------- half-width w(t) */
 
@@ -360,32 +467,34 @@ for (let i = 0; i < N; i++) {
 // offset folds over itself and the silhouette grows little lassos. Menger
 // curvature at several stencil widths, take the worst; erode the limit so a
 // narrow spike cannot be smoothed back out; clamp LAST, never smooth after.
-const kMax: number[] = new Array(N).fill(0);
-for (const sten of [3, 6, 12, 24]) {
-  for (let i = 0; i < N; i++) {
-    const a = P[Math.max(0, i - sten)]!, b = P[i]!, c = P[Math.min(N - 1, i + sten)]!;
-    const A = len(sub(b, a)), B = len(sub(c, b)), C = len(sub(c, a));
-    if (A < 1e-9 || B < 1e-9 || C < 1e-9) continue;
-    const area2 = Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y));
-    const kappa = (2 * area2) / (A * B * C);
-    if (kappa > kMax[i]!) kMax[i] = kappa;
+const curvLimitOf = (Q: V[], n: number, fac: number): number[] => {
+  const kMax: number[] = new Array(n).fill(0);
+  for (const sten of [3, 6, 12, 24]) {
+    for (let i = 0; i < n; i++) {
+      const a = Q[Math.max(0, i - sten)]!, b = Q[i]!, c = Q[Math.min(n - 1, i + sten)]!;
+      const A = len(sub(b, a)), B = len(sub(c, b)), C = len(sub(c, a));
+      if (A < 1e-9 || B < 1e-9 || C < 1e-9) continue;
+      const area2 = Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y));
+      const kappa = (2 * area2) / (A * B * C);
+      if (kappa > kMax[i]!) kMax[i] = kappa;
+    }
   }
-}
-const limit: number[] = new Array(N);
-for (let i = 0; i < N; i++) limit[i] = kMax[i]! > 1e-9 ? 0.70 / kMax[i]! : 1e9;
-{
-  const er = limit.slice();
+  const lim: number[] = new Array(n);
+  for (let i = 0; i < n; i++) lim[i] = kMax[i]! > 1e-9 ? fac / kMax[i]! : 1e9;
+  const er = lim.slice();
   const R = 5;
-  for (let i = 0; i < N; i++) {
+  for (let i = 0; i < n; i++) {
     let m = 1e9;
-    for (let j = Math.max(0, i - R); j <= Math.min(N - 1, i + R); j++) m = Math.min(m, er[j]!);
-    limit[i] = m;
+    for (let j = Math.max(0, i - R); j <= Math.min(n - 1, i + R); j++) m = Math.min(m, er[j]!);
+    lim[i] = m;
   }
   for (let s = 0; s < 4; s++) {
-    const cp = limit.slice();
-    for (let i = 1; i < N - 1; i++) limit[i] = (cp[i - 1]! + 2 * cp[i]! + cp[i + 1]!) / 4;
+    const cp = lim.slice();
+    for (let i = 1; i < n - 1; i++) lim[i] = (cp[i - 1]! + 2 * cp[i]! + cp[i + 1]!) / 4;
   }
-}
+  return lim;
+};
+const limit = curvLimitOf(P, N, 0.70);
 for (let i = 0; i < N; i++) wArr[i] = Math.min(wArr[i]!, limit[i]!);
 for (let s = 0; s < 3; s++) {
   const cp = wArr.slice();
@@ -543,6 +652,160 @@ const inkAt = (i: number, s: number, p: V): number => {
   return v;
 };
 
+/* ======================================= the scour: what is not on the plate */
+// Two kinds of absence, and neither of them is drawn.
+//
+// The first is the seventh-hour cut: a graver slip, a lens-shaped gouge laid
+// ACROSS the body. Inside it there is no tone at all; along its lip the burr
+// has shouldered the neighbouring strokes aside by a couple of points, the way
+// a scored copper plate does. It is not an outline and it is not a gash: the
+// silhouette runs straight through it, unbroken, which is exactly what makes
+// it read as damage to the PLATE rather than a wound drawn on the animal.
+// Two generations of burnishing shrink it and let the tone creep back.
+//
+// The second is the caput corvi -- the raven's head, the sign that the
+// blackening has been reached. One patch of the plate where the hatching stops
+// dead and the ground shows through solid. No edge, no label, no explanation.
+
+let cutC: V = { x: 0, y: 0 }, cutU: V = { x: 1, y: 0 }, cutV: V = { x: 0, y: 1 };
+let cutHalfLen = 0, cutHalfW = 0, cutBurr = 0, cutSurv = 0, cutAtI = 0;
+// Where the tone is DENSEST and in plain sight, because that is the only place
+// an absence is unmistakably an absence and not just the shadowed flank.
+const bestLitS = (i: number): number => {
+  let vb = -1, sb = 0;
+  for (let q = -5; q <= 5; q++) {
+    const sv = q / 6.5;
+    const p = pt(i, sv);
+    if (hidden(p, i)) continue;
+    const v = inkAt(i, sv, p);
+    if (v > vb) { vb = v; sb = sv; }
+  }
+  return vb < 0 ? 1e9 : sb;
+};
+
+if (CUT_ON) {
+  const r = draw(cutSeed(), "sevenths", TURN);
+  const uc = 0.17 + 0.40 * r();          // on the body proper, never out on the thin tail
+  const i0 = clamp(Math.round(uc * (N - 1)), 0, N - 1);
+  let bi = i0, bv = -1, bs = 0;
+  for (let i = Math.max(4, i0 - 70); i <= Math.min(N - 5, i0 + 70); i += 5) {
+    const sv = bestLitS(i);
+    if (sv > 1e8) continue;
+    const score = inkAt(i, sv, pt(i, sv)) * Math.min(1, wArr[i]! / wBody);
+    if (score > bv) { bv = score; bi = i; bs = sv; }
+  }
+  cutAtI = bi;
+  cutC = pt(cutAtI, clamp(bs + 0.22 * (2 * r() - 1), -0.62, 0.62));
+  const th = (r() > 0.5 ? 1 : -1) * (0.86 + 0.52 * r());
+  cutU = rot(T[cutAtI]!, th);
+  cutV = { x: -cutU.y, y: cutU.x };
+  const size = 0.30 + 0.70 * cutDepth;           // the region shrinks as it heals
+  cutHalfLen = (1.60 + 0.80 * r()) * wBody * size;
+  cutHalfW = (0.13 + 0.07 * r()) * wBody * size;
+  cutBurr = 3.8 * size;
+  cutSurv = (1 - cutDepth) * 0.8;                // ...and the tone comes back into it
+}
+
+let corvC: V = { x: 0, y: 0 }, corvR = 0, corvA = 0, corvB = 0, corvAtI = 0;
+if (hasCorvi) {
+  const r = draw(SHA, "corvus", 0);
+  const u0 = 0.24 + 0.34 * r();
+  const jit = 0.14 * (2 * r() - 1);
+  corvR = 0.33 * wBody + 3.4;
+  // Six candidate seats around the body, taken in a fixed order. The first one
+  // that is not within reach of this cycle's wound wins -- the two absences
+  // must never be mistaken for one another, and they are different things.
+  const keepOff = CUT_ON ? cutHalfLen + corvR + 26 : 0;
+  let far = -1;
+  for (let k = 0; k < 6; k++) {
+    const uc = clamp(u0 + k * 0.1187 - Math.floor(u0 + k * 0.1187 - 0.20), 0.20, 0.62);
+    const j0 = Math.round(uc * (N - 1));
+    let bi = j0, bv = -1, bs = 0;
+    for (let i = Math.max(4, j0 - 60); i <= Math.min(N - 5, j0 + 60); i += 5) {
+      const sv = bestLitS(i);
+      if (sv > 1e8) continue;
+      const score = inkAt(i, sv, pt(i, sv)) * Math.min(1, wArr[i]! / wBody);
+      if (score > bv) { bv = score; bi = i; bs = sv; }
+    }
+    const c = pt(bi, clamp(bs + jit, -0.55, 0.55));
+    const d = CUT_ON ? Math.hypot(c.x - cutC.x, c.y - cutC.y) : 1e9;
+    if (d > far) { far = d; corvAtI = bi; corvC = c; }
+    if (d >= keepOff) break;
+  }
+  corvA = r() * TAU;
+  corvB = r() * TAU;
+}
+
+const SCOUR = CUT_ON || hasCorvi;
+let cutTicks = 0, cutHatch = 0, cutContour = 0, cutEdge = 0;
+let corvTicks = 0, corvHatch = 0, corvContour = 0, corvEdge = 0;
+let hitCut = false, hitCorv = false;
+
+// null => this point is not on the plate. otherwise: the point, possibly
+// shouldered aside by the burr.
+const scour = (p: V, tag: number): V | null => {
+  if (!SCOUR) return p;
+  let q = p;
+  if (CUT_ON) {
+    const dx = p.x - cutC.x, dy = p.y - cutC.y;
+    const a = dx * cutU.x + dy * cutU.y;
+    if (a > -cutHalfLen && a < cutHalfLen) {
+      const b = dx * cutV.x + dy * cutV.y;
+      const e = a / cutHalfLen;
+      const lens = Math.pow(Math.max(0, 1 - e * e), 0.55);      // the slip tapers out
+      const hw = cutHalfW * lens;
+      const ab = Math.abs(b);
+      if (ab < hw) {
+        if (cutSurv <= 0 || ((fnv1a(SHA + ":scour:" + tag) >>> 9) & 1023) / 1024 >= cutSurv) { hitCut = true; return null; }
+      } else if (ab < hw + cutBurr * lens) {
+        const push = (hw + cutBurr * lens - ab) * 0.62 * (b < 0 ? -1 : 1);
+        q = { x: q.x + cutV.x * push, y: q.y + cutV.y * push };
+        hitCut = true;
+      }
+    }
+  }
+  if (hasCorvi) {
+    const dx = q.x - corvC.x, dy = q.y - corvC.y;
+    const d = Math.hypot(dx, dy);
+    if (d < corvR + 4.4) {
+      const th = Math.atan2(dy, dx);
+      const rw = corvR * (1 + 0.21 * Math.sin(3 * th + corvA) + 0.13 * Math.sin(5 * th + corvB));
+      if (d < rw) { hitCorv = true; return null; }
+      if (d < rw + 3.0 && ((fnv1a(SHA + ":corv:" + tag) >>> 11) & 255) < 150) { hitCorv = true; return null; }
+    }
+  }
+  return q;
+};
+
+// A stroke that runs into the score does not disappear: it STOPS at the lip,
+// and one that crosses the score is left in two pieces with a gap between. One
+// tag for the whole stroke, so the burnishing of a healing cut lets whole
+// strokes back rather than speckling them.
+const scourSeg = (a: V, b: V, tag: number): V[][] => {
+  hitCut = false; hitCorv = false;
+  if (!SCOUR) return [[a, b]];
+  const NS = 12;
+  const alive: boolean[] = new Array(NS + 1);
+  const qs: V[] = new Array(NS + 1);
+  for (let q = 0; q <= NS; q++) {
+    const t = q / NS;
+    const raw: V = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    const sp = scour(raw, tag);
+    alive[q] = sp !== null;
+    qs[q] = sp === null ? raw : sp;
+  }
+  const out: V[][] = [];
+  let q = 0;
+  while (q <= NS) {
+    if (!alive[q]) { q++; continue; }
+    let e = q;
+    while (e + 1 <= NS && alive[e + 1]) e++;
+    if (e > q) out.push([qs[q]!, qs[e]!]);
+    q = e + 1;
+  }
+  return out;
+};
+
 /* ============================================ the single body outline */
 
 const STEP = 4;
@@ -579,14 +842,32 @@ for (let k = idxList.length - 1; k >= 0; k--) { const i = idxList[k]!; ring.push
   }
 }
 
-const M = ring.length;
 // Catmull-Rom -> cubic Bezier around the closed ring
-const c1: V[] = new Array(M), c2: V[] = new Array(M);
-for (let k = 0; k < M; k++) {
-  const p0 = ring[(k - 1 + M) % M]!, p1 = ring[k]!, p2 = ring[(k + 1) % M]!, p3 = ring[(k + 2) % M]!;
-  c1[k] = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
-  c2[k] = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
-}
+const bezRing = (r: V[]): { c1: V[]; c2: V[] } => {
+  const m = r.length;
+  const a: V[] = new Array(m), b: V[] = new Array(m);
+  for (let k = 0; k < m; k++) {
+    const p0 = r[(k - 1 + m) % m]!, p1 = r[k]!, p2 = r[(k + 1) % m]!, p3 = r[(k + 2) % m]!;
+    a[k] = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+    b[k] = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+  }
+  return { c1: a, c2: b };
+};
+
+const dOfRing = (r: V[], a: V[], b: V[]): string => {
+  const m = r.length;
+  let d = "M" + f2(r[0]!.x) + " " + f2(r[0]!.y);
+  for (let k = 0; k < m; k++) {
+    const p2 = r[(k + 1) % m]!;
+    d += "C" + f2(a[k]!.x) + " " + f2(a[k]!.y) + " " + f2(b[k]!.x) + " " + f2(b[k]!.y) +
+      " " + f2(p2.x) + " " + f2(p2.y);
+  }
+  return d + "Z";
+};
+
+const M = ring.length;
+const bez = bezRing(ring);
+const c1 = bez.c1, c2 = bez.c2;
 
 // per-segment arc length (so the break pattern lands where we mean it to)
 const segLen: number[] = new Array(M);
@@ -643,13 +924,76 @@ let dashArr = "";
   dashArr = parts.map(f2).join(" ");
 }
 
-let bodyD = "M" + f2(ring[0]!.x) + " " + f2(ring[0]!.y);
-for (let k = 0; k < M; k++) {
-  const p2 = ring[(k + 1) % M]!;
-  bodyD += "C" + f2(c1[k]!.x) + " " + f2(c1[k]!.y) + " " + f2(c2[k]!.x) + " " + f2(c2[k]!.y) +
-    " " + f2(p2.x) + " " + f2(p2.y);
+const bodyD = dOfRing(ring, c1, c2);
+
+/* ============================================ the one that is also there */
+// Built from the same knot, the same resampler, the same width anchors, the
+// same curvature clamp and the same ring-to-Bezier as the body above -- the
+// numbers are simply somewhere else. It does not arrive and it does not leave.
+
+let ghostD = "", ghostTicks = "";
+let ghostHead: V = { x: CX, y: CY };
+let ghostSeg = 0;
+if (hasGhost) {
+  const r = draw(SHA, "ghost", 0);
+  const GP: KnotP = {
+    rotBase: BASEK.rotBase + 0.22 + 0.30 * r(),
+    phK: BASEK.phK + 0.60 + 0.85 * r(),
+    R0: BASEK.R0 * (0.952 + 0.034 * r()),
+    R1: BASEK.R1 * (1.02 + 0.10 * r()),
+    K: BASEK.K,
+    eps: BASEK.eps,
+    wob1: BASEK.wob1 * (0.70 + 0.9 * r()),
+    wob2: BASEK.wob2 * (0.70 + 0.9 * r()),
+    ph1: BASEK.ph1 + 0.85 * r(),
+    ph2: BASEK.ph2 + 0.85 * r(),
+    aw1: BASEK.aw1 * 1.26,
+    aw2: BASEK.aw2 * 1.26,
+    ph3: BASEK.ph3 + 0.5,
+    ph4: BASEK.ph4 + 0.5,
+  };
+  const kg = mkKnot(GP);
+  const RG = 3000, NG = 700;
+  const rawG: V[] = new Array(RG + 1);
+  for (let k = 0; k <= RG; k++) rawG[k] = kg(k / RG);
+  const ag = resampleArc(rawG, NG);
+  const PG = ag.P, SG = ag.S;
+  const fg = framesOf(PG);
+  const lg = curvLimitOf(PG, NG, 0.62);
+  const wG: number[] = new Array(NG);
+  for (let i = 0; i < NG; i++) {
+    const l = (i / (NG - 1)) * SG;
+    let w = pw(l, anchors);
+    if (l > 0.58 * SG) { const f = (l - 0.58 * SG) / (SG - 0.58 * SG); w *= 1 - 0.91 * Math.pow(f, 2.6); }
+    const u = i / (NG - 1);
+    // it has no mouth: the tail simply resumes being the head
+    if (u > 0.90) { const t = sstep((u - 0.90) / 0.10); w = w * (1 - t) + pw(0, anchors) * t; }
+    wG[i] = Math.max(1.2, Math.min(w * 0.88, lg[i]!));
+  }
+  for (let sm = 0; sm < 3; sm++) {
+    const cp = wG.slice();
+    for (let i = 1; i < NG - 1; i++) wG[i] = (cp[i - 1]! + 2 * cp[i]! + cp[i + 1]!) / 4;
+  }
+  for (let i = 0; i < NG; i++) wG[i] = Math.min(wG[i]!, lg[i]!);
+  const ptG = (i: number, sv: number): V => ({
+    x: PG[i]!.x + fg.Nr[i]!.x * sv * wG[i]!,
+    y: PG[i]!.y + fg.Nr[i]!.y * sv * wG[i]!,
+  });
+  const ig: number[] = [];
+  for (let i = 0; i < NG; i += 7) ig.push(i);
+  if (ig[ig.length - 1] !== NG - 1) ig.push(NG - 1);
+  const ringG: V[] = [];
+  for (const i of ig) ringG.push(ptG(i, -1));
+  for (let k = ig.length - 1; k >= 0; k--) ringG.push(ptG(ig[k]!, 1));
+  const bg = bezRing(ringG);
+  ghostD = dOfRing(ringG, bg.c1, bg.c2);
+  ghostSeg = ringG.length;
+  ghostHead = PG[0]!;
+  for (let i = 5; i < NG - 5; i += 9) {
+    const a = ptG(i, -0.74), b = ptG(i, 0.74);
+    ghostTicks += "M" + f2(a.x) + " " + f2(a.y) + "l" + f2(b.x - a.x) + " " + f2(b.y - a.y);
+  }
 }
-bodyD += "Z";
 
 /* ================================================== engraving passes */
 
@@ -696,10 +1040,12 @@ const bandEdges: number[] = [];   // longitudinal scale-row lines run along thes
       const mid = pt(i, sMid);
       const v = inkAt(i, sMid, mid);
       if (v > 0.05 && w > 2.6 && !hidden(mid, i) && !hidden(a, i) && !hidden(b, i)) {
+        const parts = scourSeg(a, b, j * 131071 + n * 3);
+        if (hitCut) cutTicks++;
+        if (hitCorv) corvTicks++;
         const wb = v < 0.36 ? 0 : v < 0.7 ? 1 : 2;
         const gi = wb * 2 + ((fnv1a(SHA + ":tk:" + j + ":" + n) >>> 5) & 1);
-        tickPaths[gi] += seg(a, b);
-        tickCount++;
+        for (const pr of parts) { tickPaths[gi] += seg(pr[0]!, pr[1]!); tickCount++; }
       }
       n++;
       const hd = i * ds < headLen * 1.15 ? 0.6 : 1;
@@ -732,11 +1078,24 @@ let contourRuns = 0;
       }
       pts = []; sum = 0; cnt = 0;
     };
+    let prev: V = pt(0, sv);
     for (let i = 0; i < N; i += 4) {
       const p = pt(i, sv);
       const v = inkAt(i, sv, p);
       if (hidden(p, i) || wArr[i]! < 3.4 || v < cut) { flush(); continue; }
-      pts.push(f2(p.x) + "," + f2(p.y));
+      const tg = 1048573 + q * 4093 + i;
+      hitCut = false; hitCorv = false;
+      const sp = scour(p, tg);
+      const spm = pts.length > 0 ? scour({ x: (prev.x + p.x) / 2, y: (prev.y + p.y) / 2 }, tg) : p;
+      if (!sp || !spm) {
+        flush();
+        if (hitCut) cutContour++;
+        if (hitCorv) corvContour++;
+        prev = p;
+        continue;
+      }
+      prev = p;
+      pts.push(f2(sp.x) + "," + f2(sp.y));
       sum += v; cnt++;
     }
     flush();
@@ -770,8 +1129,10 @@ const hatchHeavy: string[] = [];
         const mid = pt(im, sMid);
         const v = inkAt(im, sMid, mid);
         if (v > ps.thr && !hidden(a, i) && !hidden(b, i2) && !hidden(mid, im)) {
-          ps.bucket.push(seg(a, b));
-          hatchCount++;
+          const parts = scourSeg(a, b, 4194301 + j * 7919 + i * 5 + (ps.slope > 0 ? 2 : 0));
+          if (hitCut) cutHatch++;
+          if (hitCorv) corvHatch++;
+          for (const pr of parts) { ps.bucket.push(seg(pr[0]!, pr[1]!)); hatchCount++; }
         }
         if (w < 5) { i += 4; continue; }
         const perp = (ps.sp0 + (ps.sp1 - ps.sp0) * clamp((v - ps.thr) / (1 - ps.thr), 0, 1)) *
@@ -796,7 +1157,12 @@ const edgeSeg: string[] = [];
       if (v > 0.66 && !hidden(a, i)) {
         const i2 = Math.min(N - 1, i + Math.max(2, Math.round((w * 1.8) / ds)));
         const b = pt(i2, sEdge);
-        if (!hidden(b, i2)) edgeSeg.push(seg(a, b));
+        if (!hidden(b, i2)) {
+          const parts = scourSeg(a, b, 8388593 + i * 11 + (sEdge > 0 ? 1 : 0));
+          if (hitCut) cutEdge++;
+          if (hitCorv) corvEdge++;
+          for (const pr of parts) edgeSeg.push(seg(pr[0]!, pr[1]!));
+        }
       }
       i += Math.max(2, Math.round((w * 1.5) / ds));
     }
@@ -907,6 +1273,56 @@ const frame: string[] = [];
   frame.push(mk(31));
 }
 
+/* ----------------------------------------- four marks, one to each corner */
+// Where a printer would put his registration. Four of them, none the same as
+// another, in the order the CANOPIC block at the head of this file fixes. The
+// shape is chosen by CORNER, never by name, so the names can be substituted
+// without a single line on the plate moving.
+
+const cornerMarks: string[] = [];
+{
+  const INS = 40;
+  const anch = [
+    { x: INS, y: INS, sx: 1, sy: 1 },              // NW
+    { x: W - INS, y: INS, sx: -1, sy: 1 },         // NE
+    { x: W - INS, y: H - INS, sx: -1, sy: -1 },    // SE
+    // SW stands off the bottom rule, because the strata tally already has that
+    // corner and a mark sitting in the same row would read as part of the count
+    { x: INS, y: H - 86, sx: 1, sy: -1 },          // SW
+  ];
+
+  // the quadrant, struck out in code so its arc is a real arc
+  const quad: number[] = [];
+  for (let q = 0; q <= 12; q++) {
+    const th = 0.10 + (1.46 - 0.10) * (q / 12);
+    quad.push(14.5 * Math.cos(th), 14.5 * Math.sin(th));
+  }
+  const ray = (th: number, r0: number, r1: number): number[] =>
+    [r0 * Math.cos(th), r0 * Math.sin(th), r1 * Math.cos(th), r1 * Math.sin(th)];
+
+  const shapes: number[][][] = [
+    // NW -- the lintel: a squared angle, stepped once, with a bar set off it
+    [[0, 15, 0, 0, 15, 0], [0, 5.5, 5.5, 5.5, 5.5, 0], [9.5, 9.8, 14.6, 9.8], [12.2, 12.4, 12.2, 16.2]],
+    // NE -- the comb: a spine, three obliques shortening, one crossbar
+    [[0, 0, 0, 15.5], [0, 2, 9.2, 5.1], [0, 6.1, 6.6, 9.2], [0, 10.2, 4.1, 13.3], [3.1, 1.2, 3.1, 12.4]],
+    // SE -- the quadrant: an open arc and two rays that overrun it
+    [quad, ray(0.40, 14.5, 18.9), ray(1.14, 14.5, 18.9)],
+    // SW -- the lozenge: three sides of four, barred
+    [[0, 8, 8, 0, 16, 8, 8, 16], [5.4, 8, 10.8, 8], [12.8, 12.8, 16.4, 16.4]],
+  ];
+
+  CANOPIC.forEach((_c, ci) => {
+    const a = anch[ci]!;
+    for (const poly of shapes[ci]!) {
+      const o: string[] = [];
+      for (let q = 0; q < poly.length; q += 2) {
+        o.push(f2(a.x + a.sx * poly[q]!) + "," + f2(a.y + a.sy * poly[q + 1]!));
+      }
+      cornerMarks.push(o.join(" "));
+    }
+  });
+}
+
 // tally of the strata, cut into the plate like a printer's count
 const tally: string[] = [];
 {
@@ -925,6 +1341,92 @@ const tally: string[] = [];
 
 /* ============================================================== emit */
 
+/* ================================================================= the strike */
+// There is no trigger and there can be none, so the whole thing is one very
+// long clock with almost nothing on it.
+//
+// For nearly three minutes: the breath, and that is all. Then the GATHERING --
+// eight and a half seconds in which the coil draws in by one per cent and the
+// head backs off by under two, an amount you cannot name and can only feel,
+// arranged so that almost none of it happens until the last half second.
+// Then four tenths of a second in which the ring flattens toward you and the
+// skull is suddenly very close.
+//
+// Then it lets go. Three and a half seconds take away six sevenths of it; the
+// last few per cent are given the next twenty-six seconds to leave, so there is
+// no moment at which it has stopped, and the value it returns to is the value
+// it started from, exactly.
+//
+// The breath is a separate animation on the same group, summed, with its own
+// clock -- the strike neither interrupts it nor resets it.
+
+const f6 = (v: number): string => {
+  let t = v.toFixed(6);
+  if (t.indexOf(".") >= 0) t = t.replace(/0+$/, "").replace(/\.$/, "");
+  return t === "-0" || t === "" ? "0" : t;
+};
+
+interface Beat { t: number; head: number; sx: number; sy: number; ease: string }
+interface Track { kt: string; ks: string; head: string; coil: string; lunge: number; gather: number; back: number }
+
+const strikeTrack = (period: number, open: number, peak: number, px: number, py: number): Track => {
+  const h = (f: number): number => 1 + (peak - 1) * f;
+  const x = (f: number): number => 1 + (px - 1) * f;
+  const y = (f: number): number => 1 + (py - 1) * f;
+  const beats: Beat[] = [
+    // t (s)            head        coil x     coil y     easing OUT of this beat
+    { t: 0, head: 1, sx: 1, sy: 1, ease: "0 0 1 1" },
+    // THE GATHERING. Eight and a half seconds, of which the first five and a
+    // half do nothing at all; then a third of one per cent; then, in the four
+    // tenths of a second immediately before the lunge, the deepest part of the
+    // recoil -- the coil drawn in, the head pulled back onto its own neck.
+    // Under two per cent, all told. You cannot see it. You can feel it.
+    { t: open, head: 1, sx: 1, sy: 1, ease: "0.93 0 0.96 0.42" },
+    { t: open + 5.6, head: 0.997, sx: 0.9982, sy: 0.9982, ease: "0.70 0 0.85 0.40" },
+    { t: open + 8.0, head: 0.9895, sx: 0.9945, sy: 0.9945, ease: "0.35 0 0.55 1" },
+    { t: open + 8.4, head: 0.9832, sx: 0.9902, sy: 0.9902, ease: "0.10 0.62 0.28 1" },
+    // 0.4s. The ring flattens hard toward the viewer -- the axis it flattens on
+    // crowds the scale ticks together -- and the skull is very close.
+    { t: open + 8.8, head: peak, sx: px, sy: py, ease: "0.40 0 0.60 1" },
+    { t: open + 8.96, head: h(0.962), sx: x(0.885), sy: y(0.960), ease: "0.50 0 0.28 1" },
+    // and then it lets go, and goes on letting go for half a minute
+    { t: open + 12.5, head: h(0.137), sx: x(0.115), sy: y(0.125), ease: "0.42 0 0.30 1" },
+    { t: open + 21.5, head: h(0.0158), sx: x(0.014), sy: y(0.0155), ease: "0.35 0 0.25 1" },
+    { t: open + 39.0, head: 1, sx: 1, sy: 1, ease: "0 0 1 1" },   // and it was never anywhere
+    { t: period, head: 1, sx: 1, sy: 1, ease: "" },
+  ];
+  const kt = beats.map((b) => f6(b.t / period));
+  return {
+    kt: kt.join(";"),
+    ks: beats.slice(0, -1).map((b) => b.ease).join(";"),
+    head: beats.map((b) => f6(b.head)).join(";"),
+    coil: beats.map((b) => f6(b.sx) + " " + f6(b.sy)).join(";"),
+    lunge: (Number(kt[5]) - Number(kt[4])) * period,
+    gather: (Number(kt[4]) - Number(kt[1])) * period,
+    back: (Number(kt[9]) - Number(kt[5])) * period,
+  };
+};
+
+const STRIKE_PERIOD = 252, STRIKE_OPEN = 178, BREATH = 46;
+const GHOST_PERIOD = 227, GHOST_OPEN = 121, GHOST_BREATH = 53, GHOST_DASH = 181;
+const mainTrack = strikeTrack(STRIKE_PERIOD, STRIKE_OPEN, 1.50, 0.895, 0.775);
+const ghostTrack = strikeTrack(GHOST_PERIOD, GHOST_OPEN, 1.22, 0.944, 0.884);
+
+// the skull's own centre: the lunge is a magnification about THIS, not a slide
+const headCtr = pt(clamp(Math.round((0.30 * headLen) / ds), 0, N - 1), -0.05);
+
+const scaleTo = (vals: string, tr: Track, dur: number): string =>
+  `<animateTransform attributeName="transform" type="scale" additive="sum" values="${vals}"` +
+  ` keyTimes="${tr.kt}" keySplines="${tr.ks}" calcMode="spline" dur="${dur}s" repeatCount="indefinite"/>`;
+
+const breathe = (dur: number): string =>
+  `<animateTransform attributeName="transform" type="scale" additive="sum" values="1 1;1.006 1.0042;1 1"` +
+  ` keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" calcMode="spline" dur="${dur}s" repeatCount="indefinite"/>`;
+
+const lift = (cx: number, cy: number, anims: string): string =>
+  `<g transform="translate(${f2(cx)},${f2(cy)})"><g>${anims}<g transform="translate(${f2(-cx)},${f2(-cy)})">`;
+const drop = `</g></g></g>`;
+
 const spl = `calcMode="spline" keyTimes="0;1" keySplines="0.42 0 0.58 1"`;
 const splT = `calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"`;
 
@@ -938,10 +1440,34 @@ const render = (ground: string, line: string): string => {
   o.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${ground}"/>`);
   o.push(`<g fill="none" stroke="${line}" stroke-linecap="round" stroke-linejoin="round">`);
 
+  // Behind everything, including the plate rules. Three per cent: there is no
+  // moment at which it appears, because there is no moment at which it did not.
+  if (hasGhost) {
+    durList.push(GHOST_PERIOD); durList.push(GHOST_BREATH); durList.push(GHOST_DASH);
+    o.push(`<g opacity="0.03">`);
+    o.push(lift(ghostHead.x, ghostHead.y, scaleTo(ghostTrack.head, ghostTrack, GHOST_PERIOD)));
+    o.push(lift(CX, CY, breathe(GHOST_BREATH) + scaleTo(ghostTrack.coil, ghostTrack, GHOST_PERIOD)));
+    o.push(`<g stroke-width="1.05"><path d="${ghostD}"/></g>`);
+    o.push(`<g stroke-width="0.55" stroke-dasharray="8 4" stroke-dashoffset="0">`);
+    o.push(`<animate attributeName="stroke-dashoffset" values="0;-24" dur="${GHOST_DASH}s" ${spl} repeatCount="indefinite"/>`);
+    o.push(`<path d="${ghostTicks}"/></g>`);
+    o.push(drop + drop);
+    o.push(`</g>`);
+  }
+
   // plate
   o.push(`<g stroke-width="0.8"><polyline points="${frame[0]}"/></g>`);
   o.push(`<g stroke-width="1.9"><polyline points="${frame[1]}"/></g>`);
   o.push(`<g stroke-width="1.7"><path d="${tally.join("")}"/></g>`);
+  o.push(`<g stroke-width="0.75">`);
+  for (const cm of cornerMarks) o.push(`<polyline points="${cm}"/>`);
+  o.push(`</g>`);
+
+  // Everything from here to the close is the creature, and the creature alone:
+  // the plate itself must not move when it lunges.
+  durList.push(STRIKE_PERIOD); durList.push(BREATH);
+  o.push(lift(headCtr.x, headCtr.y, scaleTo(mainTrack.head, mainTrack, STRIKE_PERIOD)));
+  o.push(lift(CX, CY, breathe(BREATH) + scaleTo(mainTrack.coil, mainTrack, STRIKE_PERIOD)));
 
   // the shading, laid down first: contour lines then the crossing strokes
   durList.push(90);
@@ -1002,6 +1528,7 @@ const render = (ground: string, line: string): string => {
   o.push(`<animate attributeName="stroke-dashoffset" values="0;-48" dur="74s" ${spl} repeatCount="indefinite"/>`);
   o.push(`</polyline>`);
 
+  o.push(drop + drop);
   o.push(`</g></svg>`);
   return o.join("\n");
 };
@@ -1038,4 +1565,25 @@ console.log(`halfwidth=${f2(wBody)}  head=${f2(wHead)}  R0=${f2(R0)}  R1=${f2(R1
 console.log(`ticks=${tickCount}  hatch=${hatchCount}  contour=${contourRuns}  edge=${edgeSeg.length}  breaks=${merged.length}`);
 console.log(`segments=${M}  pathlen=${f2(PATHLEN)}  elements=${count(darkSvg, /<(path|polyline|line|rect|g)\b/g)}`);
 console.log(`dur_min=${durs[0]}s  durs=${durs.map((d) => d + "s").join(",")}`);
+console.log(
+  `strike=${STRIKE_PERIOD}s  gather=${f2(mainTrack.gather)}s  lunge=${f2(mainTrack.lunge)}s  ` +
+  `withdraw=${f2(mainTrack.back)}s  breath=${BREATH}s  head_at=${f2(headCtr.x)},${f2(headCtr.y)}`
+);
+console.log(
+  `cut=${cutPhase}  gen%${CYC}=${PHASE}  turn=${TURN}  depth=${f2(cutDepth)}  ` +
+  (CUT_ON
+    ? `at=${f2((cutAtI / (N - 1)) * 100)}% (${f2(cutC.x)},${f2(cutC.y)})  len=${f2(2 * cutHalfLen)}  wide=${f2(2 * cutHalfW)}  ` +
+      `scoured t/h/c/e=${cutTicks}/${cutHatch}/${cutContour}/${cutEdge}`
+    : `scoured t/h/c/e=0/0/0/0`)
+);
+console.log(
+  `second_serpent=${hasGhost ? "on" : "off"} (layers>=${GHOST_AT})  ` +
+  (hasGhost ? `ghost_seg=${ghostSeg}  ghost_period=${GHOST_PERIOD}s  ` : "") +
+  `caput_corvi=${hasCorvi ? "on" : "off"} (layers>=${CORVI_AT})` +
+  (hasCorvi
+    ? `  corvi_at=${f2((corvAtI / (N - 1)) * 100)}% (${f2(corvC.x)},${f2(corvC.y)})  r=${f2(corvR)}  ` +
+      `smothered t/h/c/e=${corvTicks}/${corvHatch}/${corvContour}/${corvEdge}`
+    : "")
+);
+console.log(`corner_marks=${CANOPIC.length} in ${cornerMarks.length} strokes (${CANOPIC.map((c) => c.corner + ":" + c.direction + ":" + c.name).join(" ")})`);
 console.log(`dark_bytes=${bytes(darkSvg)}  light_bytes=${bytes(lightSvg)}  changed=${changed}  dry=${dryRun}`);
