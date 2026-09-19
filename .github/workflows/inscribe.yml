@@ -1,0 +1,72 @@
+name: inscribe
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  inscribe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: inscribe the banner
+        run: node --experimental-strip-types tools/palimpsest.ts
+
+      - name: regenerate the strata table
+        run: node --experimental-strip-types tools/palimpsest.ts --readme
+
+      - name: commit if the inscription changed
+        run: |
+          git add -A -- banner-light.svg banner-dark.svg
+          if git diff --cached --quiet -- banner-light.svg banner-dark.svg; then
+            echo "banner bytes unchanged; nothing to inscribe"
+            git reset -- banner-light.svg banner-dark.svg
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- LEDGER.md README.md
+          git commit -m "inscribe: $(git rev-parse --short HEAD) [skip ci]"
+          git push
+
+      - name: generate the snake
+        uses: Platane/snk@v3
+        continue-on-error: true
+        with:
+          github_user_name: "${{ github.repository_owner }}"
+          # Palette discipline: the three palette colours and nothing else. Every
+          # intermediate step is the foreground at 25/50/75% alpha over the
+          # background -- an opacity step, not a new hue, exactly as the banner
+          # builds its depth. The accent is the snake itself, identical in both.
+          outputs: |
+            dist/snake-dark.svg?color_snake=#8c6d46&color_dots=#1c1917,#e7e0d440,#e7e0d480,#e7e0d4bf,#e7e0d4
+            dist/snake-light.svg?color_snake=#8c6d46&color_dots=#e7e0d4,#1c191740,#1c191780,#1c1917bf,#1c1917
+
+      - name: push the snake to output
+        uses: crazy-max/ghaction-github-pages@v5
+        continue-on-error: true
+        with:
+          target_branch: output
+          build_dir: dist
+          keep_history: false
+          jekyll: false
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
