@@ -36,6 +36,11 @@ import {
   altFragmentFor,
   fontSizeFor,
   fragmentFor,
+  guardianFor,
+  hourNameFor,
+  hourOf,
+  legible,
+  rotOnce,
   widthOf,
 } from "./fragments.ts";
 
@@ -49,10 +54,15 @@ const BANNER_DARK = join(ROOT, "banner-dark.svg");
 const LEDGER_PATH = join(ROOT, "LEDGER.md");
 const README_PATH = join(ROOT, "README.md");
 
-/** The entire palette. Exactly three hex literals may appear in any emitted SVG. */
-const VELLUM = "#0b0a09";
-const BONE = "#d6cfc0";
-const ICHOR = "#6e1f14";
+const nigredo = {
+  vellum: "#0b0a09",
+  bone: "#d6cfc0",
+  ichor: "#6e1f14",
+};
+
+const VELLUM = nigredo.vellum;
+const BONE = nigredo.bone;
+const ICHOR = nigredo.ichor;
 
 const WIDTH = 1280;
 const HEIGHT = 360;
@@ -98,8 +108,8 @@ const BLEED_OVER = 5;
 const NULL_SHA = "0000000000000000000000000000000000000000";
 
 /* ledger + readme */
-const LEDGER_HEAD = "| generation | sha | layers |";
-const LEDGER_RULE = "| ---: | --- | ---: |";
+const LEDGER_HEAD = "| generation | sha | layers |  |";
+const LEDGER_RULE = "| ---: | --- | ---: | ---: |";
 const STRATA_ROWS = 12;
 const STRATA_START = "<!-- strata:start -->";
 const STRATA_END = "<!-- strata:end -->";
@@ -292,7 +302,7 @@ const sane = (l: Partial<Layer>): Layer => {
     y: clamp(num(l.y, COLD_Y), Y_MIN, Y_MAX),
     rot: clamp(num(l.rot, 0), ROT_MIN, ROT_MAX),
     opacity: clamp(num(l.opacity, 1), 0, 1),
-    content: typeof l.content === "string" && l.content.length > 0 ? l.content : fragmentFor(0),
+    content: typeof l.content === "string" ? l.content : fragmentFor(0),
   };
 };
 
@@ -365,15 +375,25 @@ const parseLayers = (svg: string, meta: BannerMeta | null): Layer[] => {
    Demote / prune / inscribe
    ───────────────────────────────────────────────────────────────────────────── */
 
-/** Fainter, nudged, tilted. Relative order is preserved, so older stays deeper. */
+/**
+ * Fainter, nudged, tilted. Relative order is preserved, so older stays deeper.
+ *
+ * A layer also loses a glyph every second generation it survives, so the deepest strata go
+ * illegible by decay rather than by fading alone. The draw is seeded like everything else, so
+ * the decay replays exactly from the sha chain.
+ */
 const demote = (layers: Layer[], sha: string): Layer[] =>
-  layers.map((l, i) => ({
-    opacity: round(l.opacity * DEMOTE_FACTOR),
-    x: round(clamp(l.x + jitter(sha, "demote-x", i, JITTER_XY), X_MIN, X_MAX)),
-    y: round(clamp(l.y + jitter(sha, "demote-y", i, JITTER_XY), Y_MIN, Y_MAX)),
-    rot: round(clamp(l.rot + jitter(sha, "demote-rot", i, JITTER_ROT), ROT_MIN, ROT_MAX)),
-    content: l.content,
-  }));
+  layers.map((l, i) => {
+    const depth = layers.length - i;
+    const rotting = depth % 2 === 0;
+    return {
+      opacity: round(l.opacity * DEMOTE_FACTOR),
+      x: round(clamp(l.x + jitter(sha, "demote-x", i, JITTER_XY), X_MIN, X_MAX)),
+      y: round(clamp(l.y + jitter(sha, "demote-y", i, JITTER_XY), Y_MIN, Y_MAX)),
+      rot: round(clamp(l.rot + jitter(sha, "demote-rot", i, JITTER_ROT), ROT_MIN, ROT_MAX)),
+      content: rotting ? rotOnce(l.content, draw(sha, "rot", i)) : l.content,
+    };
+  });
 
 /**
  * Drop anything below legibility, then hard-cap the total (ghosts + the layer about
@@ -477,6 +497,11 @@ const render = (layers: Layer[], v: Variant, generation: number, sha: string): s
        silently skip a generation. LEDGER.md still records the short sha, for reading. */
     generation,
     sha,
+    hour: hourOf(generation),
+    name: hourNameFor(generation),
+    guardian: guardianFor(generation),
+    nomen: "",
+    "\u1e25\ua723ty": 1,
     layers: n,
     cap: MAX_LAYERS,
     variant: v.name,
@@ -489,6 +514,7 @@ const render = (layers: Layer[], v: Variant, generation: number, sha: string): s
       rot: l.rot,
       opacity: l.opacity,
       size: fontSizeFor(l.content),
+      legible: legible(l.content),
       content: l.content,
     })),
   });
@@ -539,8 +565,11 @@ const readLedgerRows = (): string[] => {
     .filter((line) => /^\|\s*\d+\s*\|/.test(line));
 };
 
-const ledgerRow = (generation: number, sha: string, layers: number): string =>
-  `| ${generation} | ${short(sha)} | ${layers} |`;
+const ledgerRow = (generation: number, sha: string, layers: number): string => {
+  const remaining = MAX_LAYERS - layers;
+  if (remaining === 0) return `| ${generation} |  |  |  |`;
+  return `| ${generation} | ${short(sha)} | ${layers} | ${remaining} |`;
+};
 
 /** The generation recorded by the last data row, or null if the ledger has no rows yet. */
 const lastLedgerGeneration = (): number | null => {
@@ -657,11 +686,17 @@ const runInscribe = (sha: string, dryRun: boolean): number => {
   const dark = render(layers, DARK, generation, sha);
   const changed = light !== priorLight || dark !== priorDark;
 
+  const top = layers[layers.length - 1]!;
   const report = [
     `generation=${generation}`,
     `sha=${short(sha)}`,
+    `hour=${hourOf(generation)}`,
+    `guardian=${guardianFor(generation)}`,
+    `empty=${top.content === "" ? "true" : "false"}`,
+    `nexthour=${hourOf(generation + 1)}`,
+    `nextguardian=${guardianFor(generation + 1)}`,
     `layers=${layers.length}`,
-    `content=${layers[layers.length - 1]!.content}`,
+    `content=${top.content}`,
     replay ? "replay=true" : "replay=false",
   ];
   if (dryRun) report.push("dry-run=true");
@@ -685,6 +720,9 @@ const runInscribe = (sha: string, dryRun: boolean): number => {
 
   report.push(`changed=${changed ? "true" : "false"}`);
   process.stdout.write(`${report.join("\n")}\n`);
+  /* The Action reads these back to name the run and to set the repository's own description. */
+  const out = process.env.GITHUB_OUTPUT;
+  if (out !== undefined && out !== "") appendFileSync(out, `${report.join("\n")}\n`, "utf8");
   return 0;
 };
 
