@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-label="palimpsest-ouroboros">
-  <metadata>palimpsest {"generation":0,"sha":"29678044fd1ee9ef77eef1691d4143f03f15618d","layers":1,"variant":"light"}</metadata>
+  <metadata>palimpsest {"generation":1,"sha":"3a0b0cff68567cdef6314707b981d3b2ce5c0c69","layers":2,"variant":"light"}</metadata>
   <rect x="0" y="0" width="1280" height="360" fill="#e7e0d4"/>
   <circle cx="640" cy="180" r="128" fill="none" stroke="#8c6d46" stroke-width="1" opacity="0.18"/>
+  <text x="638.341" y="205.874" transform="rotate(-0.265, 638.341, 205.874)" opacity="0.72" font-family="Georgia, 'Times New Roman', Times, serif" font-size="76" font-weight="600" letter-spacing="2" text-anchor="middle" fill="#1c1917">palimpsest-ouroboros</text>
   <g>
     <animateTransform attributeName="transform" type="translate"
       values="-1.5 0;1.5 0;-1.5 0" keyTimes="0;0.5;1"
       calcMode="spline" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
       dur="11s" repeatCount="indefinite"/>
-    <text x="640" y="205" transform="rotate(0, 640, 205)" opacity="1" font-family="Georgia, 'Times New Roman', Times, serif" font-size="76" font-weight="600" letter-spacing="2" text-anchor="middle" fill="#1c1917">palimpsest-ouroboros</text>
+    <text x="635.407" y="202.386" transform="rotate(0, 635.407, 202.386)" opacity="1" font-family="Georgia, 'Times New Roman', Times, serif" font-size="76" font-weight="600" letter-spacing="2" text-anchor="middle" fill="#1c1917">palimpsest-ouroboros</text>
   </g>
 </svg>
