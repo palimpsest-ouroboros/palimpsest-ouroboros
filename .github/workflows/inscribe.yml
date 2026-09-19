@@ -30,15 +30,18 @@ jobs:
       - name: inscribe the banner
         run: node --experimental-strip-types tools/palimpsest.ts
 
-      - name: regenerate the strata table
+      - name: draw the serpent
+        run: node --experimental-strip-types tools/serpent.ts
+
+      - name: regenerate the readme
         run: node --experimental-strip-types tools/palimpsest.ts --readme
 
       - name: commit if the inscription changed
         run: |
-          git add -A -- banner-light.svg banner-dark.svg
-          if git diff --cached --quiet -- banner-light.svg banner-dark.svg; then
-            echo "banner bytes unchanged; nothing to inscribe"
-            git reset -- banner-light.svg banner-dark.svg
+          git add -A -- banner-light.svg banner-dark.svg serpent-light.svg serpent-dark.svg
+          if git diff --cached --quiet -- banner-light.svg banner-dark.svg serpent-light.svg serpent-dark.svg; then
+            echo "banner and serpent bytes unchanged; nothing to inscribe"
+            git reset -- banner-light.svg banner-dark.svg serpent-light.svg serpent-dark.svg
             exit 0
           fi
           git config user.name "github-actions[bot]"
@@ -52,13 +55,13 @@ jobs:
         continue-on-error: true
         with:
           github_user_name: "${{ github.repository_owner }}"
-          # Palette discipline: the three palette colours and nothing else. Every
-          # intermediate step is the foreground at 25/50/75% alpha over the
-          # background -- an opacity step, not a new hue, exactly as the banner
-          # builds its depth. The accent is the snake itself, identical in both.
+          # Palette discipline: vellum-burnt ground, and an intensity ramp that runs
+          # ichor through bone. Every step between is one of those two colours at an
+          # alpha step -- an opacity step, not a new hue, exactly as the banner builds
+          # its strata. The snake itself is the line colour of its variant.
           outputs: |
-            dist/snake-dark.svg?color_snake=#8c6d46&color_dots=#1c1917,#e7e0d440,#e7e0d480,#e7e0d4bf,#e7e0d4
-            dist/snake-light.svg?color_snake=#8c6d46&color_dots=#e7e0d4,#1c191740,#1c191780,#1c1917bf,#1c1917
+            dist/snake-dark.svg?color_snake=#d6cfc0&color_dots=#0b0a09,#6e1f1499,#6e1f14,#d6cfc099,#d6cfc0
+            dist/snake-light.svg?color_snake=#0b0a09&color_dots=#d6cfc0,#6e1f1499,#6e1f14,#0b0a0999,#0b0a09
 
       - name: push the snake to output
         uses: crazy-max/ghaction-github-pages@v5
