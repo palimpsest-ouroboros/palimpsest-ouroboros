@@ -1,4 +1,5 @@
 name: inscribe
+run-name: ${{ vars.PASSAGE || 'the night' }}
 
 on:
   schedule:
@@ -21,49 +22,92 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
+      - name: dies
+        id: dies
+        run: node --experimental-strip-types tools/dies.ts
+
       - name: inscribe the banner
+        id: gen
+        if: steps.dies.outputs.religiosus != 'true'
         run: node --experimental-strip-types tools/palimpsest.ts
 
       - name: draw the serpent
+        if: steps.dies.outputs.religiosus != 'true'
         run: node --experimental-strip-types tools/serpent.ts
 
       - name: regenerate the readme
+        if: steps.dies.outputs.religiosus != 'true'
         run: node --experimental-strip-types tools/palimpsest.ts --readme
 
       - name: commit if the inscription changed
+        if: steps.dies.outputs.religiosus != 'true'
         run: |
           git add -A -- banner-light.svg banner-dark.svg serpent-light.svg serpent-dark.svg
           if git diff --cached --quiet -- banner-light.svg banner-dark.svg serpent-light.svg serpent-dark.svg; then
-            echo "banner and serpent bytes unchanged; nothing to inscribe"
+            echo "unchanged; nothing to inscribe"
             git reset -- banner-light.svg banner-dark.svg serpent-light.svg serpent-dark.svg
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- LEDGER.md README.md
-          git commit -m "inscribe: $(git rev-parse --short HEAD) [skip ci]"
+          if [ "${{ steps.gen.outputs.empty }}" = "true" ]; then
+            git commit -m "mortificatio [skip ci]"
+          else
+            git commit -m "inscribe: $(git rev-parse --short HEAD) [skip ci]"
+          fi
           git push
 
+      - name: mark the cycle
+        if: steps.dies.outputs.religiosus != 'true' && steps.gen.outputs.hour == '12'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          C=$(( ${{ steps.gen.outputs.generation }} / 12 ))
+          M=$(node --experimental-strip-types -e "const m=await import('./tools/confession.ts');process.stdout.write(m.declarationFor($C))")
+          git tag -a "cycle-$C" -m "$M"
+          git push origin "cycle-$C"
+
+      - name: the description
+        if: steps.dies.outputs.religiosus != 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.PALIMPSEST_PAT }}
+          REPO: ${{ github.repository }}
+          HOUR: ${{ steps.gen.outputs.hour }}
+          GUARDIAN: ${{ steps.gen.outputs.guardian }}
+        run: |
+          [ -n "$GH_TOKEN" ] || exit 0
+          NAME=$(node --experimental-strip-types -e "const m=await import('./tools/fragments.ts');process.stdout.write(m.HOURS[$HOUR-1].name)")
+          gh api -X PATCH "repos/$REPO" -f description="$NAME"
+          node --experimental-strip-types -e "const m=await import('./tools/fragments.ts');
+            const t=m.HOURS.map(h=>h.guardian).filter(Boolean).map(g=>g.toLowerCase());
+            process.stdout.write(t.join('\n'))" > /tmp/topics
+          ARGS=""; while read -r t; do ARGS="$ARGS -f names[]=$t"; done < /tmp/topics
+          gh api -X PUT "repos/$REPO/topics" $ARGS
+          gh variable set PASSAGE --repo "$REPO" --body "$NAME${GUARDIAN:+ · $GUARDIAN}"
+
       - name: generate the snake
+        if: steps.dies.outputs.religiosus != 'true'
         uses: Platane/snk@v3
         continue-on-error: true
         with:
           github_user_name: "${{ github.repository_owner }}"
-          # Palette discipline: vellum-burnt ground, and an intensity ramp that runs
-          # ichor through bone. Every step between is one of those two colours at an
-          # alpha step -- an opacity step, not a new hue, exactly as the banner builds
-          # its strata. The snake itself is the line colour of its variant.
           outputs: |
             dist/snake-dark.svg?color_snake=#d6cfc0&color_dots=#0b0a09,#6e1f1499,#6e1f14,#d6cfc099,#d6cfc0
             dist/snake-light.svg?color_snake=#0b0a09&color_dots=#d6cfc0,#6e1f1499,#6e1f14,#0b0a0999,#0b0a09
 
       - name: push the snake to output
+        if: steps.dies.outputs.religiosus != 'true'
         uses: crazy-max/ghaction-github-pages@v5
         continue-on-error: true
         with:
