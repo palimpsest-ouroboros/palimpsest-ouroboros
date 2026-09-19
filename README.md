@@ -9,8 +9,8 @@
 
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ganeshsharma/palimpsest-ouroboros/output/snake-dark.svg">
-    <img src="https://raw.githubusercontent.com/ganeshsharma/palimpsest-ouroboros/output/snake-light.svg" alt="contribution snake">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/palimpsest-ouroboros/palimpsest-ouroboros/output/snake-dark.svg">
+    <img src="https://raw.githubusercontent.com/palimpsest-ouroboros/palimpsest-ouroboros/output/snake-light.svg" alt="contribution snake">
   </picture>
 </div>
 
