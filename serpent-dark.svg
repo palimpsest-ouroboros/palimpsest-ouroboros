@@ -1,5 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
 <desc>ouroboros; double coil; layers 7 of 14; 5 crossings; engraved linework, no fills</desc>
+<style>
+.w{pointer-events:none}.z{fill:none;pointer-events:all}
+svg:hover .w{stroke-opacity:1}
+.z0:hover~.w{transform:translate(-1.8px,-0.7px)}
+.z1:hover~.w{transform:translate(-0.9px,-0.7px)}
+.z2:hover~.w{transform:translate(0px,-0.7px)}
+.z3:hover~.w{transform:translate(0.9px,-0.7px)}
+.z4:hover~.w{transform:translate(1.8px,-0.7px)}
+.z5:hover~.w{transform:translate(-1.8px,0px)}
+.z6:hover~.w{transform:translate(-0.9px,0px)}
+.z7:hover~.w{transform:translate(0px,0px)}
+.z8:hover~.w{transform:translate(0.9px,0px)}
+.z9:hover~.w{transform:translate(1.8px,0px)}
+.z10:hover~.w{transform:translate(-1.8px,0.7px)}
+.z11:hover~.w{transform:translate(-0.9px,0.7px)}
+.z12:hover~.w{transform:translate(0px,0.7px)}
+.z13:hover~.w{transform:translate(0.9px,0.7px)}
+.z14:hover~.w{transform:translate(1.8px,0.7px)}
+</style>
+<rect class="z z0" x="0" y="0" width="256" height="300"/>
+<rect class="z z1" x="256" y="0" width="256" height="300"/>
+<rect class="z z2" x="512" y="0" width="256" height="300"/>
+<rect class="z z3" x="768" y="0" width="256" height="300"/>
+<rect class="z z4" x="1024" y="0" width="256" height="300"/>
+<rect class="z z5" x="0" y="300" width="256" height="300"/>
+<rect class="z z6" x="256" y="300" width="256" height="300"/>
+<rect class="z z7" x="512" y="300" width="256" height="300"/>
+<rect class="z z8" x="768" y="300" width="256" height="300"/>
+<rect class="z z9" x="1024" y="300" width="256" height="300"/>
+<rect class="z z10" x="0" y="600" width="256" height="300"/>
+<rect class="z z11" x="256" y="600" width="256" height="300"/>
+<rect class="z z12" x="512" y="600" width="256" height="300"/>
+<rect class="z z13" x="768" y="600" width="256" height="300"/>
+<rect class="z z14" x="1024" y="600" width="256" height="300"/>
+<g class="w">
 <rect x="0" y="0" width="1280" height="900" fill="#0b0a09"/>
 <g fill="none" stroke="#d6cfc0" stroke-linecap="round" stroke-linejoin="round">
 <g stroke-width="0.8"><polyline points="24,24 1256,24 1256,876 24,876 24,24"/></g>
@@ -181,4 +216,4 @@
 <animate attributeName="stroke-dashoffset" values="0;-48" dur="74s" calcMode="spline" keyTimes="0;1" keySplines="0.42 0 0.58 1" repeatCount="indefinite"/>
 </polyline>
 </g></g></g></g></g></g>
-</g></svg>
+</g></g></svg>

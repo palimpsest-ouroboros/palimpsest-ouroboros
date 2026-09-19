@@ -1433,10 +1433,44 @@ const splT = `calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1;0.4 0
 const tickDur = [97, 113, 127, 139, 151, 163];
 const durList: number[] = [];
 
+/**
+ * Fifteen places the cursor can be, and how far the plate leans toward each. Two points at
+ * the most; it should read as the thing having shifted while you were not looking, not as
+ * a control responding.
+ */
+const ZONES: [number, number][] = (() => {
+  const z: [number, number][] = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) z.push([(c - 2) * 0.9, (r - 1) * 0.7]);
+  return z;
+})();
+
 const render = (ground: string, line: string): string => {
   const o: string[] = [];
   o.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`);
   o.push(`<desc>ouroboros; double coil; layers ${LAYERS} of ${CAP}; ${K} crossings; engraved linework, no fills</desc>`);
+  /*
+   * Everything below the zones is inert when this file is an image.
+   *
+   * A README loads it through <img>, which exposes no document and dispatches no events
+   * into it, so :hover can never match and every rule here is dead weight. Opened as a
+   * document it is a different thing: pointer events land, :hover matches, and the plate
+   * answers the cursor. Scripts are refused in both places by the serving CSP, so this is
+   * the only way in. No rule outside a :hover changes anything that is drawn.
+   */
+  o.push(`<style>`);
+  o.push(`.w{pointer-events:none}.z{fill:none;pointer-events:all}`);
+  o.push(`svg:hover .w{stroke-opacity:1}`);
+  for (let zi = 0; zi < ZONES.length; zi++) {
+    const [dx, dy] = ZONES[zi]!;
+    o.push(`.z${zi}:hover~.w{transform:translate(${f2(dx)}px,${f2(dy)}px)}`);
+  }
+  o.push(`</style>`);
+  for (let zi = 0; zi < ZONES.length; zi++) {
+    const cx = (zi % 5) * (W / 5);
+    const cy = Math.floor(zi / 5) * (H / 3);
+    o.push(`<rect class="z z${zi}" x="${f2(cx)}" y="${f2(cy)}" width="${f2(W / 5)}" height="${f2(H / 3)}"/>`);
+  }
+  o.push(`<g class="w">`);
   o.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${ground}"/>`);
   o.push(`<g fill="none" stroke="${line}" stroke-linecap="round" stroke-linejoin="round">`);
 
@@ -1529,7 +1563,7 @@ const render = (ground: string, line: string): string => {
   o.push(`</polyline>`);
 
   o.push(drop + drop);
-  o.push(`</g></svg>`);
+  o.push(`</g></g></svg>`);
   return o.join("\n");
 };
 
