@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="1865, a ring seen while sleeping" width="100%">
+    <img src="banner-dark.svg" alt="what is below repeats what is above" width="100%">
   </picture>
 </div>
 
@@ -35,6 +35,7 @@
 | 0 | 2967804 | 1 |
 | 1 | 3a0b0cf | 2 |
 | 2 | 27e1db0 | 3 |
+| 3 | 7c50a4d | 4 |
 
 <!-- strata:end -->
 
