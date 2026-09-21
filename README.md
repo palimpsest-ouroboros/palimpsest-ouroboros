@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="URT-EM-SEKHEMU-S" width="100%">
+    <img src="banner-dark.svg" alt="MESPERIT-AR-AT-MAATU" width="100%">
   </picture>
 </div>
 
@@ -50,6 +50,7 @@
 | 7 | 8ef4a4b | 8 | 6 |
 | 8 | f1349c9 | 9 | 5 |
 | 9 | 04a539e | 10 | 4 |
+| 10 | ce73ee1 | 11 | 3 |
 
 <!-- strata:end -->
 
