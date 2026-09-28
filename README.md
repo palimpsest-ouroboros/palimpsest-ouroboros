@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="KHEFTES-HAU-HESQET-[NEHA]-HRA" width="100%">
+    <img src="banner-dark.svg" alt="NEBT-USHA" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 13 | ce20cf0 | 13 | 1 |
 | 14 | 52d7023 | 13 | 1 |
 | 15 | af31945 | 13 | 1 |
 | 16 | edfdf18 | 13 | 1 |
@@ -52,6 +51,7 @@
 | 22 | 87a20e9 | 13 | 1 |
 | 23 | 140b737 | 13 | 1 |
 | 24 | 5840cac | 13 | 1 |
+| 25 | d03d9be | 13 | 1 |
 
 <!-- strata:end -->
 
