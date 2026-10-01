@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="SESHET-MAKET-NEB-S" width="100%">
+    <img src="banner-dark.svg" alt="TENT-BAIU" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 20 | c60928f | 13 | 1 |
 | 21 | 7b1dbad | 13 | 1 |
 | 22 | 87a20e9 | 13 | 1 |
 | 23 | 140b737 | 13 | 1 |
@@ -52,6 +51,7 @@
 | 29 | f82c365 | 13 | 1 |
 | 30 | 7e385bd | 13 | 1 |
 | 31 | f09f383 | 13 | 1 |
+| 32 | 02a24ac | 13 | 1 |
 
 <!-- strata:end -->
 
