@@ -127,8 +127,8 @@ work's identity. Reduced to one digest:
 <!-- attestation:start -->
 
 ```
-sha256  cbe035d7c21f36cd36a2c8fa2f7bc072a8564f14360a7807da110dd1271156ea
-rows    51
+sha256  eb1483044aae2bd929844906ac05c95fd5c03a76d1cc005fc37030613d69bb3e
+rows    52
 ```
 
 Recompute it with `node --experimental-strip-types tools/attest.ts`.
