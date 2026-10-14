@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="TUATET-MAKETET-EN-NEB-S" width="100%">
+    <img src="banner-dark.svg" alt="TENTENIT-UHESET-KHAK-ABU" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 39 | 27fa34a | 13 | 1 |
 | 40 | 029bbee | 13 | 1 |
 | 41 | 346fd7b | 13 | 1 |
 | 42 | 40b6e6d | 13 | 1 |
@@ -52,6 +51,7 @@
 | 48 | 343251c | 13 | 1 |
 | 49 | e794797 | 13 | 1 |
 | 50 | 97963ee | 13 | 1 |
+| 51 | 6afef09 | 13 | 1 |
 
 <!-- strata:end -->
 
