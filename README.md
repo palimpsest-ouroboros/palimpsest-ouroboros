@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="tabula rasa" width="100%">
+    <img src="banner-dark.svg" alt="palimpsest-ouroboros" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 53 | f0438da | 13 | 1 |
 | 54 | 0cc3ccc | 13 | 1 |
 | 55 | f5531b5 | 13 | 1 |
 | 56 | 123e288 | 13 | 1 |
@@ -52,6 +51,7 @@
 | 62 | 4bef44a | 13 | 1 |
 | 63 | afb0d0a | 13 | 1 |
 | 64 | 0546440 | 13 | 1 |
+| 65 | 4d67206 | 13 | 1 |
 
 <!-- strata:end -->
 
