@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="TENTENIT-UHESET-KHAK-ABU" width="100%">
+    <img src="banner-dark.svg" alt="tabula rasa" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 64 | 0546440 | 13 | 1 |
 | 65 | 4d67206 | 13 | 1 |
 | 66 | 6d1c9f8 | 13 | 1 |
 | 67 | cd04390 | 13 | 1 |
@@ -52,6 +51,7 @@
 | 73 | 71e641a | 13 | 1 |
 | 74 | 0e6a48b | 13 | 1 |
 | 75 | da0053e | 13 | 1 |
+| 76 | 05d3f12 | 13 | 1 |
 
 <!-- strata:end -->
 
