@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="USHEM-HAT-KHEFTIU-NU-RA" width="100%">
+    <img src="banner-dark.svg" alt="SESHET-MAKET-NEB-S" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 79 | 9cbe2d1 | 13 | 1 |
 | 80 | adb6490 | 13 | 1 |
 | 81 | 2e5f8ee | 13 | 1 |
 | 82 | 3f30b1d | 13 | 1 |
@@ -52,6 +51,7 @@
 | 88 | ad4b949 | 13 | 1 |
 | 89 | 29f978b | 13 | 1 |
 | 90 | 9c99361 | 13 | 1 |
+| 91 | 415d24b | 13 | 1 |
 
 <!-- strata:end -->
 
