@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="MESPERIT-AR-AT-MAATU" width="100%">
+    <img src="banner-dark.svg" alt="KHEFTES-HAU-HESQET-[NEHA]-HRA" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 84 | cbf3f3b | 13 | 1 |
 | 85 | cd3d5cf | 13 | 1 |
 | 86 | d4a3bcb | 13 | 1 |
 | 87 | 003bb2f | 13 | 1 |
@@ -52,6 +51,7 @@
 | 93 | d363915 | 13 | 1 |
 | 94 | c401cd8 | 13 | 1 |
 | 95 | c1502d4 | 13 | 1 |
+| 96 | 5a7b060 | 13 | 1 |
 
 <!-- strata:end -->
 
