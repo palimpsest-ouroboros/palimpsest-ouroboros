@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="NEBT-USHA" width="100%">
+    <img src="banner-dark.svg" alt="TUATET-MAKETET-EN-NEB-S" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 86 | d4a3bcb | 13 | 1 |
 | 87 | 003bb2f | 13 | 1 |
 | 88 | ad4b949 | 13 | 1 |
 | 89 | 29f978b | 13 | 1 |
@@ -52,6 +51,7 @@
 | 95 | c1502d4 | 13 | 1 |
 | 96 | 5a7b060 | 13 | 1 |
 | 97 | 7b43626 | 13 | 1 |
+| 98 | 7a2d431 | 13 | 1 |
 
 <!-- strata:end -->
 
