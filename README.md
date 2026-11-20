@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="palimpsest-ouroboros" width="100%">
+    <img src="banner-dark.svg" alt="USHEM-HAT-KHEFTIU-NU-RA" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 102 | 26d921f | 13 | 1 |
 | 103 | 22f5722 | 13 | 1 |
 | 104 | 4bd0519 | 13 | 1 |
 | 105 | fc75097 | 13 | 1 |
@@ -52,6 +51,7 @@
 | 111 | a14b7b1 | 13 | 1 |
 | 112 | 31bd51e | 13 | 1 |
 | 113 | 8a650ce | 13 | 1 |
+| 114 | 7bc6065 | 13 | 1 |
 
 <!-- strata:end -->
 
