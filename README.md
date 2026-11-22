@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="URT-EM-SEKHEMU-S" width="100%">
+    <img src="banner-dark.svg" alt="MESPERIT-AR-AT-MAATU" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 106 | 4a0107e | 13 | 1 |
 | 107 | 11c7eca | 13 | 1 |
 | 108 | f971371 | 13 | 1 |
 | 109 | 3adee89 | 13 | 1 |
@@ -52,6 +51,7 @@
 | 115 | cb915c9 | 13 | 1 |
 | 116 | e2e25cd | 13 | 1 |
 | 117 | 2741ffd | 13 | 1 |
+| 118 | a5cbe06 | 13 | 1 |
 
 <!-- strata:end -->
 
