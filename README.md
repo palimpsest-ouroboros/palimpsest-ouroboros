@@ -3,7 +3,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="banner-light.svg">
-    <img src="banner-dark.svg" alt="TENT-BAIU" width="100%">
+    <img src="banner-dark.svg" alt="URT-EM-SEKHEMU-S" width="100%">
   </picture>
 </div>
 
@@ -40,7 +40,6 @@
 
 | generation | sha | layers |  |
 | ---: | --- | ---: | ---: |
-| 117 | 2741ffd | 13 | 1 |
 | 118 | a5cbe06 | 13 | 1 |
 | 119 | f2ab1ac | 13 | 1 |
 | 120 | b4b2fc3 | 13 | 1 |
@@ -52,6 +51,7 @@
 | 126 | cb7ad25 | 13 | 1 |
 | 127 | 38794df | 13 | 1 |
 | 128 | b8fdb5d | 13 | 1 |
+| 129 | fe2c12a | 13 | 1 |
 
 <!-- strata:end -->
 
